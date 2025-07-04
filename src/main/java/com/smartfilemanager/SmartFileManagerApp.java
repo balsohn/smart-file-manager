@@ -11,6 +11,8 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -102,10 +104,32 @@ public class SmartFileManagerApp extends Application {
     private VBox createCenterContent() {
         VBox centerContent = new VBox(20);
         centerContent.setPadding(new Insets(30));
-        centerContent.setAlignment(Pos.CENTER);
+        centerContent.setAlignment(Pos.TOP_CENTER);
         centerContent.setStyle("-fx-background-color: #f8f9fa;");
 
-        // 제목 (이모지 제거)
+        // 제목 섹션
+        VBox titleSection = createTitleSection();
+
+        // 버튼 섹션
+        HBox buttonSection = createButtonSection();
+
+        // 파일 목록 테이블 섹션
+        VBox tableSection = createTableSection();
+
+        // 상태 섹션
+        HBox statusSection = createStatusSection();
+
+        centerContent.getChildren().addAll(titleSection, buttonSection, tableSection, statusSection);
+        VBox.setVgrow(tableSection, Priority.ALWAYS);
+
+        return centerContent;
+    }
+
+    private VBox createTitleSection() {
+        VBox titleSection = new VBox(10);
+        titleSection.setAlignment(Pos.CENTER);
+
+        // 제목
         Label titleLabel = new Label(Messages.get("app.title"));
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: #2c3e50;");
@@ -115,13 +139,95 @@ public class SmartFileManagerApp extends Application {
         subtitleLabel.setFont(Font.font("System", 16));
         subtitleLabel.setStyle("-fx-text-fill: #7f8c8d;");
 
-        // 상태 라벨 (이모지 제거)
+        titleSection.getChildren().addAll(titleLabel, subtitleLabel);
+        return titleSection;
+    }
+
+    private HBox createButtonSection() {
+        HBox buttonSection = new HBox(15);
+        buttonSection.setAlignment(Pos.CENTER);
+        buttonSection.setPadding(new Insets(20, 0, 20, 0));
+
+        // 스캔 버튼
+        Button scanButton = new Button(Messages.get("button.scan"));
+        scanButton.setFont(Font.font("System", FontWeight.BOLD, 14));
+        scanButton.setPrefWidth(120);
+        scanButton.setPrefHeight(40);
+        scanButton.setStyle("-fx-background-color: #007bff; -fx-text-fill: white; -fx-background-radius: 5px;");
+        scanButton.setOnAction(e -> handleScanFiles());
+
+        // 정리 버튼
+        Button organizeButton = new Button(Messages.get("button.organize"));
+        organizeButton.setFont(Font.font("System", FontWeight.BOLD, 14));
+        organizeButton.setPrefWidth(120);
+        organizeButton.setPrefHeight(40);
+        organizeButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-background-radius: 5px;");
+        organizeButton.setOnAction(e -> handleOrganizeFiles());
+        organizeButton.setDisable(true); // 처음에는 비활성화
+
+        // 설정 버튼
+        Button settingsButton = new Button(Messages.get("button.settings"));
+        settingsButton.setFont(Font.font("System", FontWeight.BOLD, 14));
+        settingsButton.setPrefWidth(120);
+        settingsButton.setPrefHeight(40);
+        settingsButton.setStyle("-fx-background-color: #6c757d; -fx-text-fill: white; -fx-background-radius: 5px;");
+        settingsButton.setOnAction(e -> handleSettings());
+
+        buttonSection.getChildren().addAll(scanButton, organizeButton, settingsButton);
+        return buttonSection;
+    }
+
+    private VBox createTableSection() {
+        VBox tableSection = new VBox(10);
+
+        // 테이블 제목
+        Label tableTitle = new Label("File List");
+        tableTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
+        tableTitle.setStyle("-fx-text-fill: #495057;");
+
+        // 테이블 생성 (일단 기본 구조만)
+        TableView<String> fileTable = new TableView<>();
+        fileTable.setPrefHeight(300);
+        fileTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        // 테이블 컬럼들
+        TableColumn<String, String> nameColumn = new TableColumn<>("File Name");
+        nameColumn.setPrefWidth(200);
+
+        TableColumn<String, String> typeColumn = new TableColumn<>("Type");
+        typeColumn.setPrefWidth(100);
+
+        TableColumn<String, String> sizeColumn = new TableColumn<>("Size");
+        sizeColumn.setPrefWidth(100);
+
+        TableColumn<String, String> statusColumn = new TableColumn<>("Status");
+        statusColumn.setPrefWidth(120);
+
+        fileTable.getColumns().addAll(nameColumn, typeColumn, sizeColumn, statusColumn);
+
+        // 빈 테이블 플레이스홀더
+        Label placeholder = new Label("No files scanned yet. Click 'Scan Folder' to begin.");
+        placeholder.setStyle("-fx-text-fill: #6c757d;");
+        fileTable.setPlaceholder(placeholder);
+
+        tableSection.getChildren().addAll(tableTitle, fileTable);
+        VBox.setVgrow(fileTable, Priority.ALWAYS);
+
+        return tableSection;
+    }
+
+    private HBox createStatusSection() {
+        HBox statusSection = new HBox();
+        statusSection.setPadding(new Insets(10, 0, 0, 0));
+        statusSection.setAlignment(Pos.CENTER_LEFT);
+
+        // 상태 라벨
         Label statusLabel = new Label(Messages.get("app.status.ready"));
         statusLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
         statusLabel.setStyle("-fx-text-fill: #28a745;");
 
-        centerContent.getChildren().addAll(titleLabel, subtitleLabel, statusLabel);
-        return centerContent;
+        statusSection.getChildren().add(statusLabel);
+        return statusSection;
     }
 
     // 메뉴 이벤트 핸들러들 (이모지 제거)
