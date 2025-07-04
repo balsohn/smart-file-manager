@@ -24,3 +24,28 @@
 .label {
     -fx-text-fill: #495057;
 }
+
+/* 상태 라벨 스타일 */
+.status-ready {
+    -fx-text-fill: #28a745;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.status-processing {
+    -fx-text-fill: #007bff;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.status-warning {
+    -fx-text-fill: #ffc107;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.status-error {
+    -fx-text-fill: #dc3545;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
