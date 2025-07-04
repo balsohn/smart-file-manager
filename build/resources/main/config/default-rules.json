@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "description": "Smart File Manager 기본 분류 규칙",
+  "rules": [
+    {
+      "name": "문서 파일",
+      "extensions": ["pdf", "doc", "docx", "txt", "rtf", "odt"],
+      "targetFolder": "Documents",
+      "priority": 1
+    },
+    {
+      "name": "이미지 파일",
+      "extensions": ["jpg", "jpeg", "png", "gif", "bmp", "svg", "webp"],
+      "targetFolder": "Images",
+      "priority": 1
+    },
+    {
+      "name": "비디오 파일",
+      "extensions": ["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm"],
+      "targetFolder": "Videos",
+      "priority": 1
+    },
+    {
+      "name": "오디오 파일",
+      "extensions": ["mp3", "wav", "flac", "aac", "m4a", "ogg"],
+      "targetFolder": "Audio",
+      "priority": 1
+    },
+    {
+      "name": "압축 파일",
+      "extensions": ["zip", "rar", "7z", "tar", "gz", "bz2"],
+      "targetFolder": "Archives",
+      "priority": 1
+    },
+    {
+      "name": "실행 파일",
+      "extensions": ["exe", "msi", "dmg", "pkg", "deb", "rpm"],
+      "targetFolder": "Applications",
+      "priority": 1
+    }
+  ]
+}

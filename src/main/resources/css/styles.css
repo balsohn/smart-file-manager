@@ -1,0 +1,53 @@
+/* =========================
+   Smart File Manager Styles
+   ========================= */
+
+/* 전체 애플리케이션 기본 스타일 */
+.root {
+    -fx-font-family: "굴림", "Gulim", "돋움", "Dotum", sans-serif;
+}
+
+/* 제목 스타일 */
+.title-label {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+    -fx-font-family: "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
+}
+
+.subtitle-label {
+    -fx-font-size: 16px;
+    -fx-text-fill: #7f8c8d;
+    -fx-font-family: "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
+}
+
+/* 기본 라벨 스타일 */
+.label {
+    -fx-text-fill: #495057;
+}
+
+/* 상태 라벨 스타일 */
+.status-ready {
+    -fx-text-fill: #28a745;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-font-family: "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
+}
+
+.status-processing {
+    -fx-text-fill: #007bff;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.status-warning {
+    -fx-text-fill: #ffc107;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.status-error {
+    -fx-text-fill: #dc3545;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
