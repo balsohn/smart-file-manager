@@ -34,13 +34,13 @@ public class SmartFileManagerApp extends Application {
         root.setCenter(centerContent);
 
         // 씬 생성
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root, 900, 700);
 
         // 스테이지 설정
         primaryStage.setTitle(Messages.get("app.window.title"));
         primaryStage.setScene(scene);
-        primaryStage.setMinWidth(600);
-        primaryStage.setMinHeight(400);
+        primaryStage.setMinWidth(700);
+        primaryStage.setMinHeight(500);
         primaryStage.centerOnScreen();
         primaryStage.show();
 
@@ -217,7 +217,7 @@ public class SmartFileManagerApp extends Application {
     }
 
     private HBox createStatusSection() {
-        HBox statusSection = new HBox();
+        HBox statusSection = new HBox(15);
         statusSection.setPadding(new Insets(10, 0, 0, 0));
         statusSection.setAlignment(Pos.CENTER_LEFT);
 
@@ -226,7 +226,19 @@ public class SmartFileManagerApp extends Application {
         statusLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
         statusLabel.setStyle("-fx-text-fill: #28a745;");
 
-        statusSection.getChildren().add(statusLabel);
+        // 진행률 바
+        ProgressBar progressBar = new ProgressBar(0);
+        progressBar.setPrefWidth(200);
+        progressBar.setPrefHeight(20);
+        progressBar.setVisible(false); // 처음에는 숨김
+
+        // 진행률 라벨
+        Label progressLabel = new Label("");
+        progressLabel.setFont(Font.font("System", 12));
+        progressLabel.setStyle("-fx-text-fill: #6c757d;");
+        progressLabel.setVisible(false); // 처음에는 숨김
+
+        statusSection.getChildren().addAll(statusLabel, progressBar, progressLabel);
         return statusSection;
     }
 
