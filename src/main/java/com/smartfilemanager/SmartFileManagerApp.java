@@ -7,6 +7,9 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
@@ -39,7 +42,7 @@ public class SmartFileManagerApp extends Application {
         primaryStage.centerOnScreen();
         primaryStage.show();
 
-        System.out.println("🚀 " + Messages.get("app.title") + " Started!");
+        System.out.println("[START] " + Messages.get("app.title") + " Started!");
     }
 
     private MenuBar createMenuBar(Stage primaryStage) {
@@ -48,8 +51,13 @@ public class SmartFileManagerApp extends Application {
         // File Menu
         Menu fileMenu = new Menu(Messages.get("menu.file"));
         MenuItem openItem = new MenuItem("Open Folder...");
+        openItem.setAccelerator(new KeyCodeCombination(KeyCode.O, KeyCombination.CONTROL_DOWN));
+
         MenuItem settingsItem = new MenuItem("Settings");
+        settingsItem.setAccelerator(new KeyCodeCombination(KeyCode.COMMA, KeyCombination.CONTROL_DOWN));
+
         MenuItem exitItem = new MenuItem("Exit");
+        exitItem.setAccelerator(new KeyCodeCombination(KeyCode.Q, KeyCombination.CONTROL_DOWN));
 
         // 이벤트 핸들러
         openItem.setOnAction(e -> handleOpenFolder());
@@ -61,8 +69,13 @@ public class SmartFileManagerApp extends Application {
         // Tools Menu
         Menu toolsMenu = new Menu(Messages.get("menu.tools"));
         MenuItem scanItem = new MenuItem("Scan Files");
+        scanItem.setAccelerator(new KeyCodeCombination(KeyCode.F5));
+
         MenuItem organizeItem = new MenuItem("Organize Files");
+        organizeItem.setAccelerator(new KeyCodeCombination(KeyCode.F6));
+
         MenuItem duplicatesItem = new MenuItem("Find Duplicates");
+        duplicatesItem.setAccelerator(new KeyCodeCombination(KeyCode.F7));
 
         // 이벤트 핸들러
         scanItem.setOnAction(e -> handleScanFiles());
@@ -92,7 +105,7 @@ public class SmartFileManagerApp extends Application {
         centerContent.setAlignment(Pos.CENTER);
         centerContent.setStyle("-fx-background-color: #f8f9fa;");
 
-        // 제목
+        // 제목 (이모지 제거)
         Label titleLabel = new Label(Messages.get("app.title"));
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: #2c3e50;");
@@ -102,7 +115,7 @@ public class SmartFileManagerApp extends Application {
         subtitleLabel.setFont(Font.font("System", 16));
         subtitleLabel.setStyle("-fx-text-fill: #7f8c8d;");
 
-        // 상태 라벨
+        // 상태 라벨 (이모지 제거)
         Label statusLabel = new Label(Messages.get("app.status.ready"));
         statusLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
         statusLabel.setStyle("-fx-text-fill: #28a745;");
@@ -111,29 +124,29 @@ public class SmartFileManagerApp extends Application {
         return centerContent;
     }
 
-    // 메뉴 이벤트 핸들러들 (일단 기본 구현)
+    // 메뉴 이벤트 핸들러들 (이모지 제거)
     private void handleOpenFolder() {
-        System.out.println("📁 Open Folder clicked");
+        System.out.println("[INFO] Open Folder clicked");
         showInfoDialog("Open Folder", "Folder selection feature will be implemented next.");
     }
 
     private void handleSettings() {
-        System.out.println("⚙️ Settings clicked");
+        System.out.println("[INFO] Settings clicked");
         showInfoDialog("Settings", "Settings dialog will be implemented later.");
     }
 
     private void handleScanFiles() {
-        System.out.println("🔍 Scan Files clicked");
+        System.out.println("[INFO] Scan Files clicked");
         showInfoDialog("Scan Files", "File scanning feature will be implemented next.");
     }
 
     private void handleOrganizeFiles() {
-        System.out.println("🗂️ Organize Files clicked");
+        System.out.println("[INFO] Organize Files clicked");
         showInfoDialog("Organize Files", "File organization feature will be implemented later.");
     }
 
     private void handleFindDuplicates() {
-        System.out.println("🔍 Find Duplicates clicked");
+        System.out.println("[INFO] Find Duplicates clicked");
         showInfoDialog("Find Duplicates", "Duplicate detection feature will be implemented later.");
     }
 

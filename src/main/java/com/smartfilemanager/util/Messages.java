@@ -10,9 +10,9 @@ public class Messages {
         try {
             // messages.properties 파일을 resources 루트에서 로드
             bundle = ResourceBundle.getBundle("messages", Locale.ENGLISH);
-            System.out.println("✅ Messages.properties loaded successfully");
+            System.out.println("[SUCCESS] Messages.properties loaded successfully");
         } catch (Exception e) {
-            System.err.println("❌ Failed to load messages.properties: " + e.getMessage());
+            System.err.println("[ERROR] Failed to load messages.properties: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -21,7 +21,7 @@ public class Messages {
         try {
             return bundle != null ? bundle.getString(key) : key;
         } catch (Exception e) {
-            System.err.println("❌ Key not found: " + key);
+            System.err.println("[ERROR] Key not found: " + key);
             return key; // 키를 찾지 못하면 키 자체를 반환
         }
     }
@@ -30,9 +30,9 @@ public class Messages {
     public static void switchToKorean() {
         try {
             bundle = ResourceBundle.getBundle("messages", Locale.KOREAN);
-            System.out.println("✅ Switched to Korean messages");
+            System.out.println("[SUCCESS] Switched to Korean messages");
         } catch (Exception e) {
-            System.err.println("❌ Failed to switch to Korean: " + e.getMessage());
+            System.err.println("[ERROR] Failed to switch to Korean: " + e.getMessage());
         }
     }
 }
