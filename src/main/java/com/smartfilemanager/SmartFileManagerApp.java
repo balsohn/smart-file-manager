@@ -36,7 +36,7 @@ public class SmartFileManagerApp extends Application {
     private ProgressBar progressBar;    // 진행률 바
     private Label progressLabel;        // 진행률 텍스트 라벨
     private Button organizeButton;      // 정리 버튼 (스캔 후 활성화)
-    private TableView<FileInfo> fileTable;  // 파일 목록 테이블 (나중에 FileInfo 클래스 생성 예정)
+    private TableView<FileInfo> fileTable;  // 파일 목록 테이블
 
     @Override
     public void start(Stage primaryStage) {
@@ -243,10 +243,12 @@ public class SmartFileManagerApp extends Application {
         statusSection.setPadding(new Insets(10, 0, 0, 0));
         statusSection.setAlignment(Pos.CENTER_LEFT);
 
-        // 상태 라벨 (필드에 할당)
+        // 상태 라벨 (고정 폭 설정)
         statusLabel = new Label(Messages.get("app.status.ready")); // 필드에 할당
         statusLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
         statusLabel.setStyle("-fx-text-fill: #28a745;");
+        statusLabel.setPrefWidth(300);  // 폭을 300px로 고정
+        statusLabel.setMaxWidth(300);   // 최대 폭도 300px로 제한
 
         // 진행률 바 (필드에 할당)
         progressBar = new ProgressBar(0); // 필드에 할당
@@ -452,10 +454,10 @@ public class SmartFileManagerApp extends Application {
         statusLabel.setStyle("-fx-text-fill: #007bff; -fx-font-weight: bold;"); // 파란색으로 변경
 
         progressBar.setProgress(0);
-        progressBar.setVisible(true);
+        progressBar.setVisible(true);  // 스캔 시작 시 표시
 
         progressLabel.setText("0 / 0 files processed");
-        progressLabel.setVisible(true);
+        progressLabel.setVisible(true);  // 스캔 시작 시 표시
 
         organizeButton.setDisable(true); // 정리 버튼 비활성화
     }
@@ -502,6 +504,7 @@ public class SmartFileManagerApp extends Application {
         return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
     }
 
+    // 정보 다이얼로그 표시 메서드
     private void showInfoDialog(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
