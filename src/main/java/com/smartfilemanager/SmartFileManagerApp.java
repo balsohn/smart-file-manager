@@ -502,6 +502,14 @@ public class SmartFileManagerApp extends Application {
         return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
     }
 
+    private void showInfoDialog(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
     public static void main(String[] args) {
         launch(args);
     }
