@@ -1,0 +1,12 @@
+/* 전체 애플리케이션 스타일 */
+.root {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-background-color: #f8f9fa;
+}
+
+/* 버튼 스타일 */
+.primary-button {
+    -fx-background-color: #007bff;
+    -fx-text-fill: white;
+    -fx-background-radius: 5px;
+}
