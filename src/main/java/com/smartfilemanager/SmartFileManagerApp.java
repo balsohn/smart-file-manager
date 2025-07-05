@@ -1,15 +1,19 @@
 package com.smartfilemanager;
 
-import com.smartfilemanager.model.FileInfo;  // FileInfo 모델 클래스 임포트
-import com.smartfilemanager.model.ProcessingStatus;  // ProcessingStatus 열거형 임포트
+import com.smartfilemanager.model.FileInfo;
+import com.smartfilemanager.model.ProcessingStatus;
 import com.smartfilemanager.util.Messages;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.concurrent.Task;  // 백그라운드 작업을 위한 Task 클래스 추가
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -19,28 +23,41 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.stage.DirectoryChooser;  // 폴더 선택 다이얼로그를 위한 DirectoryChooser 추가
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
-import java.io.File;  // 파일 및 폴더 작업을 위한 File 클래스 추가
-import java.nio.file.Files;  // 파일 속성 읽기를 위한 Files 클래스 추가
-import java.nio.file.Path;  // 파일 경로 작업을 위한 Path 클래스 추가
-import java.time.LocalDateTime;  // 날짜/시간 처리를 위한 LocalDateTime 추가
-import java.util.ArrayList;  // 동적 리스트를 위한 ArrayList 추가
-import java.util.List;  // 리스트 인터페이스 추가
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class SmartFileManagerApp extends Application {
 
-    // UI 컴포넌트들을 클래스 필드로 선언 (다른 메서드에서 접근하기 위해)
-    private Label statusLabel;          // 상태 표시 라벨
-    private ProgressBar progressBar;    // 진행률 바
-    private Label progressLabel;        // 진행률 텍스트 라벨
-    private Button organizeButton;      // 정리 버튼 (스캔 후 활성화)
-    private TableView<FileInfo> fileTable;  // 파일 목록 테이블
+    // UI 컴포넌트들
+    private Label statusLabel;
+    private ProgressBar progressBar;
+    private Label progressLabel;
+    private Button organizeButton;
+    private TableView<FileInfo> fileTable;
+    private Label statisticsLabel;
+
+    // 데이터 모델
+    private ObservableList<FileInfo> fileList;
+
+    // 상태 관리
+    private boolean isScanning = false;
+    private String lastScannedFolder = "";
 
     @Override
     public void start(Stage primaryStage) {
-        // 메인 레이아웃을 BorderPane으로 변경
+        // 데이터 초기화
+        fileList = FXCollections.observableArrayList();
+
+        // 메인 레이아웃
         BorderPane root = new BorderPane();
 
         // 메뉴바 생성
@@ -51,14 +68,19 @@ public class SmartFileManagerApp extends Application {
         VBox centerContent = createCenterContent();
         root.setCenter(centerContent);
 
-        // 씬 생성
-        Scene scene = new Scene(root, 900, 700);
+        // 씬 생성 및 CSS 적용
+        Scene scene = new Scene(root, 1000, 750);
+        try {
+            scene.getStylesheets().add(getClass().getResource("/css/styles.css").toExternalForm());
+        } catch (Exception e) {
+            System.out.println("[WARNING] CSS 파일을 로드할 수 없습니다.");
+        }
 
         // 스테이지 설정
         primaryStage.setTitle(Messages.get("app.window.title"));
         primaryStage.setScene(scene);
-        primaryStage.setMinWidth(700);
-        primaryStage.setMinHeight(500);
+        primaryStage.setMinWidth(900);
+        primaryStage.setMinHeight(600);
         primaryStage.centerOnScreen();
         primaryStage.show();
 
@@ -109,7 +131,6 @@ public class SmartFileManagerApp extends Application {
         MenuItem aboutItem = new MenuItem("About");
         MenuItem helpTopicsItem = new MenuItem("Help Topics");
 
-        // 이벤트 핸들러
         aboutItem.setOnAction(e -> handleAbout());
         helpTopicsItem.setOnAction(e -> handleHelpTopics());
 
@@ -147,12 +168,10 @@ public class SmartFileManagerApp extends Application {
         VBox titleSection = new VBox(10);
         titleSection.setAlignment(Pos.CENTER);
 
-        // 제목
         Label titleLabel = new Label(Messages.get("app.title"));
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: #2c3e50;");
 
-        // 부제목
         Label subtitleLabel = new Label(Messages.get("app.subtitle"));
         subtitleLabel.setFont(Font.font("System", 16));
         subtitleLabel.setStyle("-fx-text-fill: #7f8c8d;");
@@ -175,13 +194,13 @@ public class SmartFileManagerApp extends Application {
         scanButton.setOnAction(e -> handleScanFiles());
 
         // 정리 버튼
-        organizeButton = new Button(Messages.get("button.organize")); // 필드에 할당
+        organizeButton = new Button(Messages.get("button.organize"));
         organizeButton.setFont(Font.font("System", FontWeight.BOLD, 14));
         organizeButton.setPrefWidth(120);
         organizeButton.setPrefHeight(40);
         organizeButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-background-radius: 5px;");
         organizeButton.setOnAction(e -> handleOrganizeFiles());
-        organizeButton.setDisable(true); // 처음에는 비활성화
+        organizeButton.setDisable(true);
 
         // 설정 버튼
         Button settingsButton = new Button(Messages.get("button.settings"));
@@ -191,51 +210,157 @@ public class SmartFileManagerApp extends Application {
         settingsButton.setStyle("-fx-background-color: #6c757d; -fx-text-fill: white; -fx-background-radius: 5px;");
         settingsButton.setOnAction(e -> handleSettings());
 
-        buttonSection.getChildren().addAll(scanButton, organizeButton, settingsButton);
+        // 새로고침 버튼 (재스캔)
+        Button refreshButton = new Button("Refresh");
+        refreshButton.setFont(Font.font("System", FontWeight.BOLD, 14));
+        refreshButton.setPrefWidth(120);
+        refreshButton.setPrefHeight(40);
+        refreshButton.setStyle("-fx-background-color: #17a2b8; -fx-text-fill: white; -fx-background-radius: 5px;");
+        refreshButton.setOnAction(e -> handleRefresh());
+        refreshButton.setDisable(true);
+
+        buttonSection.getChildren().addAll(scanButton, organizeButton, refreshButton, settingsButton);
         return buttonSection;
     }
 
     private VBox createTableSection() {
         VBox tableSection = new VBox(10);
 
-        // 테이블 제목
-        Label tableTitle = new Label("File List");
+        // 테이블 제목과 통계
+        HBox tableHeader = new HBox(10);
+        tableHeader.setAlignment(Pos.CENTER_LEFT);
+
+        Label tableTitle = new Label("File Analysis Results");
         tableTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
         tableTitle.setStyle("-fx-text-fill: #495057;");
 
-        // 테이블 생성 (필드에 할당)
-        fileTable = new TableView<>(); // 필드에 할당
-        fileTable.setPrefHeight(300);
+        statisticsLabel = new Label("No files scanned");
+        statisticsLabel.setFont(Font.font("System", 12));
+        statisticsLabel.setStyle("-fx-text-fill: #6c757d;");
+
+        tableHeader.getChildren().addAll(tableTitle, new Label(" | "), statisticsLabel);
+
+        // 테이블 생성
+        fileTable = new TableView<>();
+        fileTable.setPrefHeight(350);
         fileTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        // 테이블 컬럼들 (Lombok FileInfo에 맞게 수정)
-        TableColumn<FileInfo, String> nameColumn = new TableColumn<>("File Name");
-        nameColumn.setPrefWidth(200);
-        nameColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFileName()));
+        // 테이블에 데이터 바인딩
+        fileTable.setItems(fileList);
 
-        TableColumn<FileInfo, String> typeColumn = new TableColumn<>("Category");
-        typeColumn.setPrefWidth(100);
-        typeColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getDetectedCategory()));
-
-        TableColumn<FileInfo, String> sizeColumn = new TableColumn<>("Size");
-        sizeColumn.setPrefWidth(100);
-        sizeColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFormattedFileSize()));
-
-        TableColumn<FileInfo, String> statusColumn = new TableColumn<>("Status");
-        statusColumn.setPrefWidth(120);
-        statusColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getStatus().getDisplayName()));
-
-        fileTable.getColumns().addAll(nameColumn, typeColumn, sizeColumn, statusColumn);
+        // 테이블 컬럼 설정
+        setupTableColumns();
 
         // 빈 테이블 플레이스홀더
-        Label placeholder = new Label("No files scanned yet. Click 'Scan Folder' to begin.");
-        placeholder.setStyle("-fx-text-fill: #6c757d;");
+        Label placeholder = new Label("No files scanned yet.\nClick 'Scan Folder' to analyze files in a directory.");
+        placeholder.setStyle("-fx-text-fill: #6c757d; -fx-text-alignment: center;");
         fileTable.setPlaceholder(placeholder);
 
-        tableSection.getChildren().addAll(tableTitle, fileTable);
+        // 테이블 선택 이벤트
+        fileTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+            if (newSelection != null) {
+                showFileDetails(newSelection);
+            }
+        });
+
+        tableSection.getChildren().addAll(tableHeader, fileTable);
         VBox.setVgrow(fileTable, Priority.ALWAYS);
 
         return tableSection;
+    }
+
+    private void setupTableColumns() {
+        // 파일명 컬럼
+        TableColumn<FileInfo, String> nameColumn = new TableColumn<>("File Name");
+        nameColumn.setPrefWidth(250);
+        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFileName()));
+
+        // 카테고리 컬럼
+        TableColumn<FileInfo, String> categoryColumn = new TableColumn<>("Category");
+        categoryColumn.setPrefWidth(120);
+        categoryColumn.setCellValueFactory(cellData -> {
+            String category = cellData.getValue().getDetectedCategory();
+            return new SimpleStringProperty(category != null ? category : "Unknown");
+        });
+
+        // 서브카테고리 컬럼
+        TableColumn<FileInfo, String> subCategoryColumn = new TableColumn<>("Sub Category");
+        subCategoryColumn.setPrefWidth(120);
+        subCategoryColumn.setCellValueFactory(cellData -> {
+            String subCategory = cellData.getValue().getDetectedSubCategory();
+            return new SimpleStringProperty(subCategory != null ? subCategory : "-");
+        });
+
+        // 파일 크기 컬럼
+        TableColumn<FileInfo, String> sizeColumn = new TableColumn<>("Size");
+        sizeColumn.setPrefWidth(100);
+        sizeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFormattedFileSize()));
+
+        // 상태 컬럼 (색상 표시 포함)
+        TableColumn<FileInfo, String> statusColumn = new TableColumn<>("Status");
+        statusColumn.setPrefWidth(120);
+        statusColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getStatus().getDisplayName()));
+
+        // 상태별 색상 표시
+        statusColumn.setCellFactory(column -> new TableCell<FileInfo, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+
+                    // 현재 행의 FileInfo 객체 가져오기
+                    FileInfo fileInfo = getTableRow().getItem();
+                    if (fileInfo != null) {
+                        ProcessingStatus status = fileInfo.getStatus();
+                        switch (status) {
+                            case PENDING:
+                                setStyle("-fx-text-fill: #6c757d; -fx-font-weight: normal;");
+                                break;
+                            case SCANNING:
+                                setStyle("-fx-text-fill: #007bff; -fx-font-weight: bold;");
+                                break;
+                            case ANALYZED:
+                                setStyle("-fx-text-fill: #17a2b8; -fx-font-weight: bold;");
+                                break;
+                            case ORGANIZING:
+                                setStyle("-fx-text-fill: #ffc107; -fx-font-weight: bold;");
+                                break;
+                            case ORGANIZED:
+                                setStyle("-fx-text-fill: #28a745; -fx-font-weight: bold;");
+                                break;
+                            case FAILED:
+                                setStyle("-fx-text-fill: #dc3545; -fx-font-weight: bold;");
+                                break;
+                            case SKIPPED:
+                                setStyle("-fx-text-fill: #6f42c1; -fx-font-weight: normal;");
+                                break;
+                        }
+                    }
+                }
+            }
+        });
+
+        // 신뢰도 컬럼
+        TableColumn<FileInfo, String> confidenceColumn = new TableColumn<>("Confidence");
+        confidenceColumn.setPrefWidth(90);
+        confidenceColumn.setCellValueFactory(cellData -> {
+            double confidence = cellData.getValue().getConfidenceScore();
+            return new SimpleStringProperty(String.format("%.1f%%", confidence * 100));
+        });
+
+        // 제안 경로 컬럼
+        TableColumn<FileInfo, String> suggestedPathColumn = new TableColumn<>("Suggested Path");
+        suggestedPathColumn.setPrefWidth(200);
+        suggestedPathColumn.setCellValueFactory(cellData -> {
+            String path = cellData.getValue().getSuggestedPath();
+            return new SimpleStringProperty(path != null ? path : "Not determined");
+        });
+
+        fileTable.getColumns().addAll(nameColumn, categoryColumn, subCategoryColumn, sizeColumn, statusColumn, confidenceColumn, suggestedPathColumn);
     }
 
     private HBox createStatusSection() {
@@ -243,52 +368,52 @@ public class SmartFileManagerApp extends Application {
         statusSection.setPadding(new Insets(10, 0, 0, 0));
         statusSection.setAlignment(Pos.CENTER_LEFT);
 
-        // 상태 라벨 (고정 폭 설정)
-        statusLabel = new Label(Messages.get("app.status.ready")); // 필드에 할당
+        // 상태 라벨
+        statusLabel = new Label(Messages.get("app.status.ready"));
         statusLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
         statusLabel.setStyle("-fx-text-fill: #28a745;");
-        statusLabel.setPrefWidth(300);  // 폭을 300px로 고정
-        statusLabel.setMaxWidth(300);   // 최대 폭도 300px로 제한
+        statusLabel.setPrefWidth(350);
+        statusLabel.setMaxWidth(350);
 
-        // 진행률 바 (필드에 할당)
-        progressBar = new ProgressBar(0); // 필드에 할당
+        // 진행률 바
+        progressBar = new ProgressBar(0);
         progressBar.setPrefWidth(200);
         progressBar.setPrefHeight(20);
-        progressBar.setVisible(false); // 처음에는 숨김
+        progressBar.setVisible(false);
 
-        // 진행률 라벨 (필드에 할당)
-        progressLabel = new Label(""); // 필드에 할당
+        // 진행률 라벨
+        progressLabel = new Label("");
         progressLabel.setFont(Font.font("System", 12));
         progressLabel.setStyle("-fx-text-fill: #6c757d;");
-        progressLabel.setVisible(false); // 처음에는 숨김
+        progressLabel.setVisible(false);
 
         statusSection.getChildren().addAll(statusLabel, progressBar, progressLabel);
         return statusSection;
     }
 
-    // 메뉴 이벤트 핸들러들 - 폴더 선택 기능 구현
+    // ========== 이벤트 핸들러들 ==========
+
     private void handleOpenFolder() {
         System.out.println("[INFO] Open Folder clicked");
 
-        // DirectoryChooser 생성 및 설정
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Select Folder to Organize");
 
-        // 기본 폴더를 사용자의 홈 디렉토리로 설정
+        // 기본 폴더 설정
         String userHome = System.getProperty("user.home");
-        File defaultDirectory = new File(userHome, "Downloads"); // Downloads 폴더를 기본으로
+        File defaultDirectory = new File(userHome, "Downloads");
         if (defaultDirectory.exists()) {
             directoryChooser.setInitialDirectory(defaultDirectory);
         } else {
-            directoryChooser.setInitialDirectory(new File(userHome)); // Downloads가 없으면 홈 디렉토리
+            directoryChooser.setInitialDirectory(new File(userHome));
         }
 
-        // 폴더 선택 다이얼로그 표시
         File selectedDirectory = directoryChooser.showDialog(statusLabel.getScene().getWindow());
 
         if (selectedDirectory != null) {
             System.out.println("[INFO] Selected folder: " + selectedDirectory.getAbsolutePath());
-            startFileScan(selectedDirectory); // 선택된 폴더 스캔 시작
+            lastScannedFolder = selectedDirectory.getAbsolutePath();
+            startFileScan(selectedDirectory);
         } else {
             System.out.println("[INFO] Folder selection cancelled");
         }
@@ -296,198 +421,367 @@ public class SmartFileManagerApp extends Application {
 
     private void handleSettings() {
         System.out.println("[INFO] Settings clicked");
-        showInfoDialog("Settings", "Settings dialog will be implemented later.");
+        showInfoDialog("Settings", "Settings dialog will be implemented in the next phase.\n\nPlanned features:\n- Auto-organize settings\n- File type rules\n- Folder structure customization");
     }
 
     private void handleScanFiles() {
         System.out.println("[INFO] Scan Files clicked");
-        handleOpenFolder(); // 스캔 버튼은 폴더 선택과 동일한 동작
+        handleOpenFolder();
     }
 
     private void handleOrganizeFiles() {
         System.out.println("[INFO] Organize Files clicked");
-        showInfoDialog("Organize Files", "File organization feature will be implemented later.");
+
+        if (fileList.isEmpty()) {
+            showInfoDialog("No Files", "Please scan a folder first to analyze files.");
+            return;
+        }
+
+        List<FileInfo> analyzedFiles = fileList.stream()
+                .filter(file -> file.getStatus() == ProcessingStatus.ANALYZED)
+                .collect(Collectors.toList());
+
+        if (analyzedFiles.isEmpty()) {
+            showInfoDialog("No Files Ready", "No files are ready for organization.\nPlease complete the analysis first.");
+            return;
+        }
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Organize Files");
+        confirmAlert.setHeaderText("Ready to organize " + analyzedFiles.size() + " files");
+        confirmAlert.setContentText("This will move files to their suggested locations.\nThis action cannot be undone automatically.\n\nProceed?");
+
+        confirmAlert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                // TODO: Implement actual file organization in next phase
+                showInfoDialog("Feature Coming Soon", "File organization will be implemented in Phase 4.\n\nFor now, you can see the suggested paths in the table.");
+            }
+        });
     }
 
     private void handleFindDuplicates() {
         System.out.println("[INFO] Find Duplicates clicked");
-        showInfoDialog("Find Duplicates", "Duplicate detection feature will be implemented later.");
+
+        if (fileList.isEmpty()) {
+            showInfoDialog("No Files", "Please scan a folder first to find duplicates.");
+            return;
+        }
+
+        showInfoDialog("Feature Coming Soon", "Duplicate detection will be implemented in Phase 6.\n\nThis feature will:\n- Find exact file duplicates\n- Detect similar files\n- Suggest which files to keep");
+    }
+
+    private void handleRefresh() {
+        if (!lastScannedFolder.isEmpty()) {
+            File folder = new File(lastScannedFolder);
+            if (folder.exists()) {
+                startFileScan(folder);
+            } else {
+                showInfoDialog("Folder Not Found", "The previously scanned folder no longer exists.\nPlease select a new folder.");
+            }
+        }
     }
 
     private void handleAbout() {
         showInfoDialog("About Smart File Manager",
-                "Smart File Manager v1.0\n" +
-                        "AI-powered File Organization Tool\n\n" +
-                        "Built with JavaFX\n" +
-                        "© 2024 Smart File Manager");
+                Messages.get("app.title") + " v1.0\n" +
+                        Messages.get("app.subtitle") + "\n\n" +
+                        "Built with JavaFX and Lombok\n" +
+                        "© 2025 Smart File Manager\n\n" +
+                        "Current Features:\n" +
+                        "✓ File scanning and analysis\n" +
+                        "✓ Category detection\n" +
+                        "✓ Path suggestion\n" +
+                        "⏳ File organization (Phase 4)\n" +
+                        "⏳ Duplicate detection (Phase 6)");
     }
 
     private void handleHelpTopics() {
-        showInfoDialog("Help", "Help documentation will be available soon.");
+        showInfoDialog("Help", "Smart File Manager Help\n\n" +
+                "1. Click 'Scan Folder' to analyze files\n" +
+                "2. Review the analysis results in the table\n" +
+                "3. Files are automatically categorized\n" +
+                "4. Suggested paths show where files will be moved\n" +
+                "5. Use 'Organize Files' to execute the organization\n\n" +
+                "Status meanings:\n" +
+                "• Pending: Waiting to be processed\n" +
+                "• Analyzed: Ready for organization\n" +
+                "• Organized: Successfully moved\n" +
+                "• Failed: Error occurred\n\n" +
+                "Documentation: Coming soon!");
     }
 
-    // 파일 스캔 기능 구현 (백그라운드에서 실행)
+    // ========== 파일 스캔 기능 ==========
+
     private void startFileScan(File directory) {
-        // UI 상태 업데이트 (스캔 시작)
+        if (isScanning) {
+            System.out.println("[WARNING] Scan already in progress");
+            return;
+        }
+
         updateUIForScanStart();
 
-        // 백그라운드 Task 생성
         Task<List<FileInfo>> scanTask = new Task<List<FileInfo>>() {
             @Override
             protected List<FileInfo> call() throws Exception {
-                List<FileInfo> fileInfoList = new ArrayList<>();
+                List<FileInfo> scannedFiles = new ArrayList<>();
 
-                // 디렉토리 내 모든 파일 스캔
                 File[] files = directory.listFiles();
                 if (files == null) {
-                    return fileInfoList; // 빈 리스트 반환
+                    return scannedFiles;
                 }
 
-                int totalFiles = files.length;
+                int totalFiles = (int) java.util.Arrays.stream(files)
+                        .filter(File::isFile)
+                        .count();
                 int processedFiles = 0;
 
-                System.out.println("[INFO] Starting scan of " + totalFiles + " items");
+                System.out.println("[INFO] Starting scan of " + totalFiles + " files in " + directory.getAbsolutePath());
 
                 for (File file : files) {
-                    if (file.isFile()) { // 파일만 처리 (디렉토리 제외)
+                    if (file.isFile()) {
                         try {
-                            // 파일 정보 생성 (임시로 간단한 문자열 사용, 나중에 FileInfo 클래스로 교체)
                             FileInfo fileInfo = createFileInfo(file);
-                            fileInfoList.add(fileInfo);
+                            scannedFiles.add(fileInfo);
 
-                            // 진행률 업데이트
                             processedFiles++;
                             final int currentProgress = processedFiles;
 
-                            // UI 업데이트 (JavaFX Application Thread에서 실행)
                             Platform.runLater(() -> {
                                 double progress = (double) currentProgress / totalFiles;
                                 progressBar.setProgress(progress);
-                                progressLabel.setText(currentProgress + " / " + totalFiles + " files processed");
-                                statusLabel.setText("Scanning: " + file.getName());
+                                progressLabel.setText(currentProgress + " / " + totalFiles + " files analyzed");
+                                statusLabel.setText("Analyzing: " + file.getName());
+
+                                // 실시간으로 테이블에 파일 추가
+                                fileList.add(fileInfo);
+                                updateStatistics();
                             });
 
-                            // 시뮬레이션을 위한 약간의 지연 (실제로는 제거해도 됨)
-                            Thread.sleep(50);
+                            // 시뮬레이션 지연 (실제로는 파일 분석 시간)
+                            Thread.sleep(100);
 
                         } catch (Exception e) {
-                            System.err.println("[ERROR] Failed to process file: " + file.getName() + " - " + e.getMessage());
+                            System.err.println("[ERROR] Failed to analyze file: " + file.getName() + " - " + e.getMessage());
                         }
                     }
                 }
 
-                return fileInfoList;
+                return scannedFiles;
             }
 
             @Override
             protected void succeeded() {
-                // 스캔 성공 시 UI 업데이트
-                List<FileInfo> result = getValue();
-                Platform.runLater(() -> updateUIForScanComplete(result));
+                Platform.runLater(() -> updateUIForScanComplete(getValue()));
             }
 
             @Override
             protected void failed() {
-                // 스캔 실패 시 UI 업데이트
                 Platform.runLater(() -> updateUIForScanError(getException()));
             }
         };
 
-        // 백그라운드 스레드에서 Task 실행
         Thread scanThread = new Thread(scanTask);
-        scanThread.setDaemon(true); // 애플리케이션 종료 시 함께 종료
+        scanThread.setDaemon(true);
         scanThread.start();
     }
 
-    // 임시 FileInfo 생성 메서드 (Lombok FileInfo 사용)
     private FileInfo createFileInfo(File file) {
-        // Lombok 빌더 패턴 사용
         return FileInfo.defaultBuilder()
                 .fileName(file.getName())
                 .filePath(file.getAbsolutePath())
-                .originalLocation(file.getAbsolutePath())
+                .originalLocation(file.getParent())
                 .fileSize(file.length())
                 .fileExtension(getFileExtension(file.getName()))
                 .detectedCategory(detectCategoryFromExtension(file.getName()))
+                .detectedSubCategory(detectSubCategory(file.getName()))
+                .suggestedPath(generateSuggestedPath(file.getName()))
+                .confidenceScore(calculateConfidenceScore(file.getName()))
                 .status(ProcessingStatus.ANALYZED)
                 .processedAt(LocalDateTime.now())
                 .build();
     }
 
-    // 파일 확장자 추출 헬퍼 메서드
     private String getFileExtension(String fileName) {
         int lastDot = fileName.lastIndexOf('.');
         return (lastDot > 0) ? fileName.substring(lastDot + 1).toLowerCase() : "unknown";
     }
 
-    // 확장자로 기본 카테고리 감지
     private String detectCategoryFromExtension(String fileName) {
         String extension = getFileExtension(fileName);
 
-        // 이미지 파일
-        if (extension.matches("jpg|jpeg|png|gif|bmp|svg|webp")) {
+        if (extension.matches("jpg|jpeg|png|gif|bmp|svg|webp|tiff|ico")) {
             return "Images";
         }
-        // 문서 파일
-        if (extension.matches("pdf|doc|docx|txt|rtf|odt")) {
+        if (extension.matches("pdf|doc|docx|txt|rtf|odt|xls|xlsx|ppt|pptx")) {
             return "Documents";
         }
-        // 비디오 파일
-        if (extension.matches("mp4|avi|mkv|mov|wmv|flv|webm")) {
+        if (extension.matches("mp4|avi|mkv|mov|wmv|flv|webm|m4v|3gp")) {
             return "Videos";
         }
-        // 오디오 파일
-        if (extension.matches("mp3|wav|flac|aac|m4a|ogg")) {
+        if (extension.matches("mp3|wav|flac|aac|m4a|ogg|wma")) {
             return "Audio";
         }
-        // 압축 파일
-        if (extension.matches("zip|rar|7z|tar|gz|bz2")) {
+        if (extension.matches("zip|rar|7z|tar|gz|bz2|xz")) {
             return "Archives";
+        }
+        if (extension.matches("exe|msi|dmg|pkg|deb|rpm|app")) {
+            return "Applications";
+        }
+        if (extension.matches("iso|img|vhd|vmdk")) {
+            return "Disk Images";
         }
 
         return "Others";
     }
 
-    // 스캔 시작 시 UI 업데이트
-    private void updateUIForScanStart() {
-        statusLabel.setText("Scanning files...");
-        statusLabel.setStyle("-fx-text-fill: #007bff; -fx-font-weight: bold;"); // 파란색으로 변경
+    private String detectSubCategory(String fileName) {
+        String lowerName = fileName.toLowerCase();
+        String category = detectCategoryFromExtension(fileName);
 
-        progressBar.setProgress(0);
-        progressBar.setVisible(true);  // 스캔 시작 시 표시
+        switch (category) {
+            case "Images":
+                if (lowerName.contains("screenshot") || lowerName.contains("screen")) {
+                    return "Screenshots";
+                }
+                if (lowerName.contains("wallpaper") || lowerName.contains("background")) {
+                    return "Wallpapers";
+                }
+                if (lowerName.matches(".*\\d{8}.*") || lowerName.matches(".*\\d{4}-\\d{2}-\\d{2}.*")) {
+                    return "Photos";
+                }
+                break;
 
-        progressLabel.setText("0 / 0 files processed");
-        progressLabel.setVisible(true);  // 스캔 시작 시 표시
+            case "Documents":
+                if (lowerName.contains("resume") || lowerName.contains("cv")) {
+                    return "Resume";
+                }
+                if (lowerName.contains("invoice") || lowerName.contains("receipt")) {
+                    return "Financial";
+                }
+                if (lowerName.contains("manual") || lowerName.contains("guide")) {
+                    return "Manuals";
+                }
+                if (lowerName.contains("report")) {
+                    return "Reports";
+                }
+                break;
 
-        organizeButton.setDisable(true); // 정리 버튼 비활성화
+            case "Videos":
+                if (lowerName.contains("tutorial") || lowerName.contains("course")) {
+                    return "Educational";
+                }
+                if (lowerName.contains("movie") || lowerName.contains("film")) {
+                    return "Movies";
+                }
+                break;
+        }
+
+        return null;
     }
 
-    // 스캔 완료 시 UI 업데이트
-    private void updateUIForScanComplete(List<FileInfo> fileList) {
-        statusLabel.setText("Scan completed: " + fileList.size() + " files found");
-        statusLabel.setStyle("-fx-text-fill: #28a745; -fx-font-weight: bold;"); // 초록색으로 변경
+    private String generateSuggestedPath(String fileName) {
+        String userHome = System.getProperty("user.home");
+        String category = detectCategoryFromExtension(fileName);
+        String subCategory = detectSubCategory(fileName);
+
+        StringBuilder path = new StringBuilder(userHome)
+                .append(File.separator)
+                .append("Organized Files")
+                .append(File.separator)
+                .append(category);
+
+        if (subCategory != null) {
+            path.append(File.separator).append(subCategory);
+        }
+
+        return path.toString();
+    }
+
+    private double calculateConfidenceScore(String fileName) {
+        String extension = getFileExtension(fileName);
+
+        // 확장자 기반 기본 신뢰도
+        double baseScore = 0.7;
+
+        // 알려진 확장자면 높은 신뢰도
+        if (!extension.equals("unknown")) {
+            baseScore = 0.8;
+        }
+
+        // 서브카테고리가 감지되면 신뢰도 증가
+        if (detectSubCategory(fileName) != null) {
+            baseScore += 0.15;
+        }
+
+        // 파일명에 의미있는 키워드가 있으면 신뢰도 증가
+        String lowerName = fileName.toLowerCase();
+        if (lowerName.matches(".*[a-zA-Z가-힣]{3,}.*")) {
+            baseScore += 0.05;
+        }
+
+        return Math.min(baseScore, 1.0);
+    }
+
+    // ========== UI 상태 업데이트 메서드들 ==========
+
+    private void updateUIForScanStart() {
+        isScanning = true;
+        statusLabel.setText("Scanning files...");
+        statusLabel.setStyle("-fx-text-fill: #007bff; -fx-font-weight: bold;");
+
+        progressBar.setProgress(0);
+        progressBar.setVisible(true);
+
+        progressLabel.setText("0 / 0 files processed");
+        progressLabel.setVisible(true);
+
+        organizeButton.setDisable(true);
+
+        // 이전 스캔 결과 클리어
+        fileList.clear();
+        updateStatistics();
+    }
+
+    private void updateUIForScanComplete(List<FileInfo> fileInfoList) {
+        isScanning = false;
+
+        statusLabel.setText("Scan completed: " + fileInfoList.size() + " files analyzed");
+        statusLabel.setStyle("-fx-text-fill: #28a745; -fx-font-weight: bold;");
 
         progressBar.setProgress(1.0);
-        progressLabel.setText("Scan completed successfully");
+        progressLabel.setText("Analysis completed successfully");
 
-        // 파일이 있으면 정리 버튼 활성화
-        if (!fileList.isEmpty()) {
+        // 분석된 파일이 있으면 정리 버튼 활성화
+        long analyzedCount = fileList.stream()
+                .filter(file -> file.getStatus() == ProcessingStatus.ANALYZED)
+                .count();
+
+        if (analyzedCount > 0) {
             organizeButton.setDisable(false);
         }
 
-        // TODO: 나중에 실제 테이블에 데이터 표시
-        System.out.println("[SUCCESS] Scanned " + fileList.size() + " files");
-        for (FileInfo info : fileList) {
-            System.out.println("  - " + info.getFileName() + " (" +
-                    info.getDetectedCategory() + ", " +
-                    info.getFormattedFileSize() + ")");
-        }
+        // 새로고침 버튼 활성화
+        ((Button) statusLabel.getScene().lookup(".button:contains('Refresh')")).setDisable(false);
+
+        updateStatistics();
+
+        System.out.println("[SUCCESS] Scanned " + fileInfoList.size() + " files");
+        System.out.println("[INFO] Files by category:");
+
+        // 카테고리별 통계 출력
+        fileList.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        file -> file.getDetectedCategory() != null ? file.getDetectedCategory() : "Unknown",
+                        java.util.stream.Collectors.counting()))
+                .forEach((category, count) ->
+                        System.out.println("  - " + category + ": " + count + " files"));
     }
 
-    // 스캔 오류 시 UI 업데이트
     private void updateUIForScanError(Throwable error) {
+        isScanning = false;
+
         statusLabel.setText("Scan failed: " + error.getMessage());
-        statusLabel.setStyle("-fx-text-fill: #dc3545; -fx-font-weight: bold;"); // 빨간색으로 변경
+        statusLabel.setStyle("-fx-text-fill: #dc3545; -fx-font-weight: bold;");
 
         progressBar.setProgress(0);
         progressLabel.setText("Scan failed");
@@ -496,7 +790,59 @@ public class SmartFileManagerApp extends Application {
         error.printStackTrace();
     }
 
-    // 파일 크기 포맷팅 유틸리티 메서드
+    private void updateStatistics() {
+        if (fileList.isEmpty()) {
+            statisticsLabel.setText("No files scanned");
+            return;
+        }
+
+        long totalFiles = fileList.size();
+        long analyzedFiles = fileList.stream()
+                .filter(file -> file.getStatus() == ProcessingStatus.ANALYZED)
+                .count();
+
+        long organizedFiles = fileList.stream()
+                .filter(file -> file.getStatus() == ProcessingStatus.ORGANIZED)
+                .count();
+
+        long totalSize = fileList.stream()
+                .mapToLong(FileInfo::getFileSize)
+                .sum();
+
+        // 카테고리별 통계
+        java.util.Map<String, Long> categoryStats = fileList.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        file -> file.getDetectedCategory() != null ? file.getDetectedCategory() : "Unknown",
+                        java.util.stream.Collectors.counting()));
+
+        String topCategory = categoryStats.entrySet().stream()
+                .max(java.util.Map.Entry.comparingByValue())
+                .map(java.util.Map.Entry::getKey)
+                .orElse("None");
+
+        statisticsLabel.setText(String.format(
+                "Total: %d files (%s) | Analyzed: %d | Most common: %s (%d files)",
+                totalFiles, formatFileSize(totalSize), analyzedFiles,
+                topCategory, categoryStats.getOrDefault(topCategory, 0L)
+        ));
+    }
+
+    private void showFileDetails(FileInfo fileInfo) {
+        // 선택된 파일의 상세 정보를 상태바에 표시
+        String details = String.format(
+                "Selected: %s | Category: %s | Size: %s | Confidence: %.1f%%",
+                fileInfo.getFileName(),
+                fileInfo.getDetectedCategory(),
+                fileInfo.getFormattedFileSize(),
+                fileInfo.getConfidenceScore() * 100
+        );
+
+        statusLabel.setText(details);
+        statusLabel.setStyle("-fx-text-fill: #495057; -fx-font-weight: normal;");
+    }
+
+    // ========== 유틸리티 메서드들 ==========
+
     private String formatFileSize(long bytes) {
         if (bytes < 1024) return bytes + " B";
         if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
@@ -504,12 +850,14 @@ public class SmartFileManagerApp extends Application {
         return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
     }
 
-    // 정보 다이얼로그 표시 메서드
     private void showInfoDialog(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+
+        // 다이얼로그 크기 조정
+        alert.getDialogPane().setPrefWidth(400);
         alert.showAndWait();
     }
 
