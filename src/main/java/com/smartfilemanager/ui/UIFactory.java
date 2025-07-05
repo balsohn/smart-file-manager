@@ -29,19 +29,19 @@ public class UIFactory {
     public static MenuBar createMenuBar(Stage primaryStage, Runnable onOpenFolder,
                                         Runnable onSettings, Runnable onScanFiles,
                                         Runnable onOrganizeFiles, Runnable onUndoOrganization,
-                                        Runnable onFindDuplicates, Runnable onAbout,
-                                        Runnable onHelpTopics) {
+                                        Runnable onFindDuplicates, Runnable onCleanupFiles,
+                                        Runnable onAbout, Runnable onHelpTopics) {
         MenuBar menuBar = new MenuBar();
 
         // File Menu
-        Menu fileMenu = new Menu("File");
-        MenuItem openItem = new MenuItem("Open Folder...");
+        Menu fileMenu = new Menu("📁 파일");
+        MenuItem openItem = new MenuItem("📂 폴더 열기...");
         openItem.setAccelerator(new KeyCodeCombination(KeyCode.O, KeyCombination.CONTROL_DOWN));
 
-        MenuItem settingsItem = new MenuItem("Settings");
+        MenuItem settingsItem = new MenuItem("⚙️ 설정");
         settingsItem.setAccelerator(new KeyCodeCombination(KeyCode.COMMA, KeyCombination.CONTROL_DOWN));
 
-        MenuItem exitItem = new MenuItem("Exit");
+        MenuItem exitItem = new MenuItem("🚪 종료");
         exitItem.setAccelerator(new KeyCodeCombination(KeyCode.Q, KeyCombination.CONTROL_DOWN));
 
         // 이벤트 핸들러
@@ -52,31 +52,36 @@ public class UIFactory {
         fileMenu.getItems().addAll(openItem, new SeparatorMenuItem(), settingsItem, new SeparatorMenuItem(), exitItem);
 
         // Tools Menu
-        Menu toolsMenu = new Menu("Tools");
-        MenuItem scanItem = new MenuItem("Scan Files");
+        Menu toolsMenu = new Menu("🔧 도구");
+        MenuItem scanItem = new MenuItem("🔍 파일 스캔");
         scanItem.setAccelerator(new KeyCodeCombination(KeyCode.F5));
 
-        MenuItem organizeItem = new MenuItem("Organize Files");
+        MenuItem organizeItem = new MenuItem("📦 파일 정리");
         organizeItem.setAccelerator(new KeyCodeCombination(KeyCode.F6));
 
-        MenuItem undoItem = new MenuItem("Undo Organization");
+        MenuItem undoItem = new MenuItem("↩️ 정리 되돌리기");
         undoItem.setAccelerator(new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN));
 
-        MenuItem duplicatesItem = new MenuItem("Find Duplicates");
+        MenuItem duplicatesItem = new MenuItem("🔄 중복 파일 찾기");
         duplicatesItem.setAccelerator(new KeyCodeCombination(KeyCode.F7));
+
+        MenuItem cleanupItem = new MenuItem("🧹 불필요한 파일 정리");
+        cleanupItem.setAccelerator(new KeyCodeCombination(KeyCode.F8));
 
         // 이벤트 핸들러
         scanItem.setOnAction(e -> onScanFiles.run());
         organizeItem.setOnAction(e -> onOrganizeFiles.run());
         undoItem.setOnAction(e -> onUndoOrganization.run());
         duplicatesItem.setOnAction(e -> onFindDuplicates.run());
+        cleanupItem.setOnAction(e -> onCleanupFiles.run());
 
-        toolsMenu.getItems().addAll(scanItem, organizeItem, undoItem, new SeparatorMenuItem(), duplicatesItem);
+        toolsMenu.getItems().addAll(scanItem, organizeItem, undoItem, new SeparatorMenuItem(),
+                duplicatesItem, cleanupItem);
 
         // Help Menu
-        Menu helpMenu = new Menu("Help");
-        MenuItem aboutItem = new MenuItem("About");
-        MenuItem helpTopicsItem = new MenuItem("Help Topics");
+        Menu helpMenu = new Menu("❓ 도움말");
+        MenuItem aboutItem = new MenuItem("ℹ️ 정보");
+        MenuItem helpTopicsItem = new MenuItem("📖 도움말");
 
         // 이벤트 핸들러
         aboutItem.setOnAction(e -> onAbout.run());
