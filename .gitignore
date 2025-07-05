@@ -85,3 +85,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Gradle
+.gradle/
+/build/
