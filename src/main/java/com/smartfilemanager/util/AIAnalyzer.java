@@ -30,8 +30,8 @@ public class AIAnalyzer {
     private boolean enabled;
 
     public AIAnalyzer() {
+        // Java 11 호환성을 위해 간단한 HttpClient 생성
         this.httpClient = HttpClient.newBuilder()
-                .timeout(Duration.ofSeconds(30))
                 .build();
         this.gson = new Gson();
         this.model = DEFAULT_MODEL;
@@ -182,13 +182,18 @@ public class AIAnalyzer {
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(requestBody)))
                 .build();
 
-        // API 호출
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        try {
+            // API 호출 (타임아웃은 기본값 사용)
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() == 200) {
-            return parseOpenAIResponse(response.body());
-        } else {
-            System.err.println("[ERROR] OpenAI API 오류: " + response.statusCode() + " - " + response.body());
+            if (response.statusCode() == 200) {
+                return parseOpenAIResponse(response.body());
+            } else {
+                System.err.println("[ERROR] OpenAI API 오류: " + response.statusCode() + " - " + response.body());
+                return null;
+            }
+        } catch (Exception e) {
+            System.err.println("[ERROR] OpenAI API 호출 실패: " + e.getMessage());
             return null;
         }
     }
@@ -353,38 +358,6 @@ public class AIAnalyzer {
     }
 
     /**
-     * 분석 통계 계산
-     */
-    public AnalysisStats calculateStats(List<FileInfo> analyzedFiles) {
-        AnalysisStats stats = new AnalysisStats();
-
-        int totalFiles = analyzedFiles.size();
-        int successfulAnalysis = 0;
-        double totalConfidence = 0.0;
-        Map<String, Integer> categoryCounts = new HashMap<>();
-
-        for (FileInfo file : analyzedFiles) {
-            if (file.getConfidenceScore() > 0) {
-                successfulAnalysis++;
-                totalConfidence += file.getConfidenceScore();
-
-                String category = file.getDetectedCategory();
-                if (category != null) {
-                    categoryCounts.put(category, categoryCounts.getOrDefault(category, 0) + 1);
-                }
-            }
-        }
-
-        stats.setTotalAnalyzed(totalFiles);
-        stats.setSuccessful(successfulAnalysis);
-        stats.setFailed(totalFiles - successfulAnalysis);
-        stats.setAverageConfidence(successfulAnalysis > 0 ? totalConfidence / successfulAnalysis : 0.0);
-        stats.setCategoryCounts(categoryCounts);
-
-        return stats;
-    }
-
-    /**
      * API 키 유효성 검사
      */
     public boolean validateApiKey() {
@@ -406,21 +379,6 @@ public class AIAnalyzer {
     }
 
     /**
-     * AI 분석 비용 추정 (대략적)
-     */
-    public double estimateCost(List<FileInfo> files) {
-        if (!enabled || files.isEmpty()) {
-            return 0.0;
-        }
-
-        // GPT-3.5-turbo 기준 대략적 비용 계산 ($0.002 per 1K tokens)
-        int averageTokensPerFile = 300; // 추정값
-        int totalTokens = files.size() * averageTokensPerFile;
-
-        return (totalTokens / 1000.0) * 0.002; // USD
-    }
-
-    /**
      * 설정 요약 정보
      */
     public String getConfigSummary() {
@@ -438,56 +396,5 @@ public class AIAnalyzer {
     public void shutdown() {
         // HttpClient는 자동으로 정리됨
         System.out.println("[AI] AIAnalyzer 종료");
-    }
-
-    /**
-     * AI 분석 통계 정보
-     */
-    public static class AnalysisStats {
-        private int totalAnalyzed;
-        private int successful;
-        private int failed;
-        private double averageConfidence;
-        private Map<String, Integer> categoryCounts;
-
-        public AnalysisStats() {
-            this.categoryCounts = new HashMap<>();
-        }
-
-        // Getters and setters
-        public int getTotalAnalyzed() { return totalAnalyzed; }
-        public void setTotalAnalyzed(int totalAnalyzed) { this.totalAnalyzed = totalAnalyzed; }
-
-        public int getSuccessful() { return successful; }
-        public void setSuccessful(int successful) { this.successful = successful; }
-
-        public int getFailed() { return failed; }
-        public void setFailed(int failed) { this.failed = failed; }
-
-        public double getAverageConfidence() { return averageConfidence; }
-        public void setAverageConfidence(double averageConfidence) { this.averageConfidence = averageConfidence; }
-
-        public Map<String, Integer> getCategoryCounts() { return categoryCounts; }
-        public void setCategoryCounts(Map<String, Integer> categoryCounts) { this.categoryCounts = categoryCounts; }
-
-        public String toString() {
-            StringBuilder sb = new StringBuilder();
-            sb.append("AI 분석 통계:\n");
-            sb.append("  총 파일: ").append(totalAnalyzed).append("개\n");
-            sb.append("  성공: ").append(successful).append("개\n");
-            sb.append("  실패: ").append(failed).append("개\n");
-            sb.append("  평균 신뢰도: ").append(String.format("%.2f", averageConfidence)).append("\n");
-            sb.append("  카테고리별 분포:\n");
-
-            categoryCounts.entrySet().stream()
-                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                    .forEach(entry -> sb.append("    ")
-                            .append(entry.getKey())
-                            .append(": ")
-                            .append(entry.getValue())
-                            .append("개\n"));
-
-            return sb.toString();
-        }
     }
 }
