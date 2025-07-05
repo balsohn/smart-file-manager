@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<VBox xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.smartfilemanager.controller.SettingsController">
+    <children>
+        <!-- 제목 영역 -->
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <children>
+                <Label text="⚙️ 설정" styleClass="settings-title">
+                    <font>
+                        <Font name="System Bold" size="20.0" />
+                    </font>
+                </Label>
+            </children>
+            <padding>
+                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+            </padding>
+        </HBox>
+
+        <!-- 탭 패널 -->
+        <TabPane fx:id="settingsTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+
+            <!-- 기본 설정 탭 -->
+            <Tab text="📁 기본 설정">
+                <content>
+                    <ScrollPane fitToWidth="true">
+                        <content>
+                            <VBox spacing="15.0">
+                                <padding>
+                                    <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                </padding>
+
+                                <!-- 기본 폴더 설정 -->
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="📂 기본 폴더 설정" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="스캔 폴더:" minWidth="120.0" />
+                                                <TextField fx:id="defaultScanFolderField" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="browseScanFolderButton" text="📁 찾아보기" onAction="#handleBrowseScanFolder" />
+                                            </children>
+                                        </HBox>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="정리 폴더:" minWidth="120.0" />
+                                                <TextField fx:id="organizationFolderField" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="browseOrganizationFolderButton" text="📁 찾아보기" onAction="#handleBrowseOrganizationFolder" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <Separator />
+
+                                <!-- 자동 기능 설정 -->
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="🤖 자동 기능 설정" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <CheckBox fx:id="autoOrganizeCheckBox" text="자동 파일 정리 활성화" />
+                                        <CheckBox fx:id="realTimeMonitoringCheckBox" text="실시간 폴더 감시" />
+                                        <CheckBox fx:id="showNotificationsCheckBox" text="알림 표시" />
+                                    </children>
+                                </VBox>
+
+                                <Separator />
+
+                                <!-- 정리 방식 설정 -->
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="📦 정리 방식 설정" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <CheckBox fx:id="organizeByDateCheckBox" text="날짜별 세부 분류 (Images, Videos)" />
+                                        <CheckBox fx:id="createSubfoldersCheckBox" text="서브카테고리 폴더 생성" />
+                                        <CheckBox fx:id="backupBeforeOrganizingCheckBox" text="정리 전 백업 생성" />
+                                    </children>
+                                </VBox>
+                            </VBox>
+                        </content>
+                    </ScrollPane>
+                </content>
+            </Tab>
+
+            <!-- 중복 파일 설정 탭 -->
+            <Tab text="🔄 중복 파일">
+                <content>
+                    <ScrollPane fitToWidth="true">
+                        <content>
+                            <VBox spacing="15.0">
+                                <padding>
+                                    <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                </padding>
+
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="🔍 중복 파일 탐지" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <CheckBox fx:id="enableDuplicateDetectionCheckBox" text="중복 파일 탐지 활성화" />
+                                        <CheckBox fx:id="autoResolveDuplicatesCheckBox" text="자동으로 중복 해결" />
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="해결 방식:" minWidth="80.0" />
+                                                <ComboBox fx:id="duplicateStrategyComboBox" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+                            </VBox>
+                        </content>
+                    </ScrollPane>
+                </content>
+            </Tab>
+
+            <!-- 성능 설정 탭 -->
+            <Tab text="⚡ 성능">
+                <content>
+                    <ScrollPane fitToWidth="true">
+                        <content>
+                            <VBox spacing="15.0">
+                                <padding>
+                                    <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                </padding>
+
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="📏 파일 처리 제한" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="최대 분석 크기:" minWidth="120.0" />
+                                                <Spinner fx:id="maxFileSizeSpinner" min="1" max="10240" initialValue="100" editable="true" />
+                                                <Label text="MB" />
+                                            </children>
+                                        </HBox>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="감시 간격:" minWidth="120.0" />
+                                                <Spinner fx:id="monitoringIntervalSpinner" min="1" max="3600" initialValue="5" editable="true" />
+                                                <Label text="초" />
+                                            </children>
+                                        </HBox>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="최대 파일 수:" minWidth="120.0" />
+                                                <Spinner fx:id="maxFileCountSpinner" min="10" max="100000" initialValue="1000" editable="true" />
+                                                <Label text="개" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <Separator />
+
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="🔍 분석 설정" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <CheckBox fx:id="enableContentAnalysisCheckBox" text="파일 내용 분석 활성화" />
+                                        <CheckBox fx:id="enableAIAnalysisCheckBox" text="AI 분석 활성화 (실험적)" />
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="AI API 키:" minWidth="80.0" />
+                                                <PasswordField fx:id="aiApiKeyField" HBox.hgrow="ALWAYS" promptText="선택사항" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+                            </VBox>
+                        </content>
+                    </ScrollPane>
+                </content>
+            </Tab>
+
+            <!-- UI 설정 탭 -->
+            <Tab text="🎨 화면">
+                <content>
+                    <ScrollPane fitToWidth="true">
+                        <content>
+                            <VBox spacing="15.0">
+                                <padding>
+                                    <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                </padding>
+
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="🖥️ 화면 설정" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="언어:" minWidth="80.0" />
+                                                <ComboBox fx:id="languageComboBox" />
+                                            </children>
+                                        </HBox>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="테마:" minWidth="80.0" />
+                                                <ComboBox fx:id="themeComboBox" />
+                                            </children>
+                                        </HBox>
+
+                                        <CheckBox fx:id="minimizeToTrayCheckBox" text="시스템 트레이로 최소화" />
+                                        <CheckBox fx:id="startWithWindowsCheckBox" text="Windows 시작 시 자동 실행" />
+                                        <CheckBox fx:id="debugModeCheckBox" text="디버그 모드 활성화" />
+                                    </children>
+                                </VBox>
+                            </VBox>
+                        </content>
+                    </ScrollPane>
+                </content>
+            </Tab>
+        </TabPane>
+
+        <!-- 하단 버튼 영역 -->
+        <HBox alignment="CENTER_RIGHT" spacing="10.0">
+            <children>
+                <Button fx:id="resetButton" text="🔄 기본값으로 복원" onAction="#handleReset" />
+                <Button fx:id="cancelButton" text="❌ 취소" onAction="#handleCancel" />
+                <Button fx:id="saveButton" text="💾 저장" onAction="#handleSave" styleClass="primary-button" />
+            </children>
+            <padding>
+                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+            </padding>
+        </HBox>
+    </children>
+</VBox>
