@@ -85,6 +85,7 @@ public class SmartFileManagerApp extends Application {
                 eventHandlers::handleSettings,
                 eventHandlers::handleScanFiles,
                 eventHandlers::handleOrganizeFiles,
+                eventHandlers::handleUndoOrganization,
                 eventHandlers::handleFindDuplicates,
                 eventHandlers::handleAbout,
                 eventHandlers::handleHelpTopics

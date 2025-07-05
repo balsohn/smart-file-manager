@@ -14,6 +14,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -371,6 +372,97 @@ public class EventHandlers {
         help.append("• Ctrl+Q: 종료\n");
 
         UIFactory.showInfoDialog("도움말", help.toString());
+    }
+
+    /**
+     * 파일 정리 되돌리기 핸들러
+     */
+    public void handleUndoOrganization() {
+        System.out.println("[정보] 되돌리기 버튼 클릭됨");
+
+        // 되돌릴 수 있는 파일들 찾기
+        List<FileInfo> undoableFiles = com.smartfilemanager.service.UndoService.getUndoableFiles(
+                new ArrayList<>(fileList)
+        );
+
+        if (undoableFiles.isEmpty()) {
+            UIFactory.showInfoDialog("되돌릴 파일 없음",
+                    "정리된 파일이 없습니다.\n" +
+                            "파일을 먼저 정리한 후 되돌리기를 사용할 수 있습니다.");
+            return;
+        }
+
+        // 상세 정보 표시
+        long totalSize = undoableFiles.stream().mapToLong(FileInfo::getFileSize).sum();
+        String formattedSize = formatFileSize(totalSize);
+
+        StringBuilder message = new StringBuilder();
+        message.append(undoableFiles.size()).append("개의 정리된 파일을 원래 위치로 되돌리시겠습니까?\n");
+        message.append("총 크기: ").append(formattedSize).append("\n\n");
+
+        message.append("되돌릴 파일들:\n");
+        undoableFiles.stream()
+                .limit(5) // 처음 5개만 표시
+                .forEach(file -> message.append("• ").append(file.getFileName()).append("\n"));
+
+        if (undoableFiles.size() > 5) {
+            message.append("... 그 외 ").append(undoableFiles.size() - 5).append("개\n");
+        }
+
+        message.append("\n⚠️ 주의: 원래 위치에 같은 이름의 파일이 있으면 백업됩니다.\n");
+        message.append("계속하시겠습니까?");
+
+        // 확인 다이얼로그
+        boolean confirmed = UIFactory.showConfirmDialog("파일 되돌리기", message.toString());
+
+        if (confirmed) {
+            startUndoProcess(undoableFiles);
+        }
+    }
+
+    /**
+     * 되돌리기 프로세스 시작
+     */
+    private void startUndoProcess(List<FileInfo> undoableFiles) {
+        // UndoService 생성 및 실행
+        com.smartfilemanager.service.UndoService undoService =
+                new com.smartfilemanager.service.UndoService(progressBar, statusLabel, progressLabel);
+
+        // 백그라운드에서 되돌리기 실행
+        javafx.concurrent.Task<Integer> undoTask = undoService.undoOrganizationAsync(undoableFiles);
+
+        // 되돌리기 완료 후 UI 업데이트
+        undoTask.setOnSucceeded(e -> {
+            Integer successCount = undoTask.getValue();
+
+            // 테이블 새로고침 (상태 변경 반영)
+            if (fileTable != null) {
+                fileTable.refresh();
+            }
+
+            // 성공 메시지 표시
+            String resultMessage = String.format(
+                    "파일 되돌리기가 완료되었습니다!\n\n" +
+                            "성공: %d개 파일\n" +
+                            "실패: %d개 파일\n\n" +
+                            "파일들이 원래 위치로 되돌려졌습니다.\n" +
+                            "이제 다시 스캔하고 정리할 수 있습니다.",
+                    successCount,
+                    undoableFiles.size() - successCount
+            );
+
+            UIFactory.showInfoDialog("되돌리기 완료", resultMessage);
+        });
+
+        undoTask.setOnFailed(e -> {
+            Throwable exception = undoTask.getException();
+            UIFactory.showInfoDialog("되돌리기 실패", "파일 되돌리기 중 오류가 발생했습니다:\n" + exception.getMessage());
+        });
+
+        // 백그라운드 스레드에서 실행
+        Thread undoThread = new Thread(undoTask);
+        undoThread.setDaemon(true);
+        undoThread.start();
     }
 
     /**

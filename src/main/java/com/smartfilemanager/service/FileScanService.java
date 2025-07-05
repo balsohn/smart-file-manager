@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 파일 스캔 담당 서비스 클래스
+ * 파일 스캔 담당 서비스 클래스 (강화된 분석 기능 포함)
  * 백그라운드에서 파일 스캔 작업을 수행합니다.
  */
 public class FileScanService {
@@ -23,12 +23,14 @@ public class FileScanService {
     private Label statusLabel;
     private Label progressLabel;
     private ObservableList<FileInfo> fileList;
+    private FileAnalysisService analysisService;
 
     public FileScanService(ProgressBar progressBar, Label statusLabel, Label progressLabel, ObservableList<FileInfo> fileList) {
         this.progressBar = progressBar;
         this.statusLabel = statusLabel;
         this.progressLabel = progressLabel;
         this.fileList = fileList;
+        this.analysisService = new FileAnalysisService();
     }
 
     /**
@@ -53,13 +55,13 @@ public class FileScanService {
                 int totalFiles = files.length;
                 int processedFiles = 0;
 
-                System.out.println("[INFO] Starting scan of " + totalFiles + " items");
+                System.out.println("[정보] " + totalFiles + "개 항목 스캔 시작");
 
                 for (File file : files) {
                     if (file.isFile()) { // 파일만 처리 (디렉토리 제외)
                         try {
-                            // 파일 정보 생성
-                            FileInfo fileInfo = createFileInfo(file);
+                            // 강화된 파일 분석 사용
+                            FileInfo fileInfo = analysisService.analyzeFile(file.getAbsolutePath());
                             fileInfoList.add(fileInfo);
 
                             // 진행률 업데이트
@@ -70,15 +72,15 @@ public class FileScanService {
                             Platform.runLater(() -> {
                                 double progress = (double) currentProgress / totalFiles;
                                 progressBar.setProgress(progress);
-                                progressLabel.setText(currentProgress + " / " + totalFiles + " files processed");
-                                statusLabel.setText("Scanning: " + file.getName());
+                                progressLabel.setText(currentProgress + " / " + totalFiles + " 파일 처리됨");
+                                statusLabel.setText("분석 중: " + file.getName());
                             });
 
                             // 시뮬레이션을 위한 약간의 지연 (실제로는 제거해도 됨)
                             Thread.sleep(50);
 
                         } catch (Exception e) {
-                            System.err.println("[ERROR] Failed to process file: " + file.getName() + " - " + e.getMessage());
+                            System.err.println("[오류] 파일 처리 실패: " + file.getName() + " - " + e.getMessage());
                         }
                     }
                 }
@@ -107,95 +109,16 @@ public class FileScanService {
     }
 
     /**
-     * 파일 정보 생성 (Lombok FileInfo 사용)
-     */
-    private FileInfo createFileInfo(File file) {
-        try {
-            // 실제 파일의 수정 날짜 가져오기
-            java.nio.file.Path path = file.toPath();
-            java.nio.file.attribute.BasicFileAttributes attrs = java.nio.file.Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes.class);
-
-            LocalDateTime createdTime = LocalDateTime.ofInstant(attrs.creationTime().toInstant(), java.time.ZoneId.systemDefault());
-            LocalDateTime modifiedTime = LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(), java.time.ZoneId.systemDefault());
-
-            return FileInfo.defaultBuilder()
-                    .fileName(file.getName())
-                    .filePath(file.getAbsolutePath())
-                    .originalLocation(file.getAbsolutePath())
-                    .fileSize(file.length())
-                    .fileExtension(getFileExtension(file.getName()))
-                    .detectedCategory(detectCategoryFromExtension(file.getName()))
-                    .createdDate(createdTime)
-                    .modifiedDate(modifiedTime)
-                    .status(ProcessingStatus.ANALYZED)
-                    .processedAt(LocalDateTime.now())
-                    .build();
-        } catch (Exception e) {
-            System.err.println("[ERROR] Failed to read file attributes for: " + file.getName() + " - " + e.getMessage());
-
-            // 오류 발생 시 기본값으로 생성
-            return FileInfo.defaultBuilder()
-                    .fileName(file.getName())
-                    .filePath(file.getAbsolutePath())
-                    .originalLocation(file.getAbsolutePath())
-                    .fileSize(file.length())
-                    .fileExtension(getFileExtension(file.getName()))
-                    .detectedCategory(detectCategoryFromExtension(file.getName()))
-                    .status(ProcessingStatus.ANALYZED)
-                    .processedAt(LocalDateTime.now())
-                    .build();
-        }
-    }
-
-    /**
-     * 파일 확장자 추출
-     */
-    private String getFileExtension(String fileName) {
-        int lastDot = fileName.lastIndexOf('.');
-        return (lastDot > 0) ? fileName.substring(lastDot + 1).toLowerCase() : "unknown";
-    }
-
-    /**
-     * 확장자로 기본 카테고리 감지
-     */
-    private String detectCategoryFromExtension(String fileName) {
-        String extension = getFileExtension(fileName);
-
-        // 이미지 파일
-        if (extension.matches("jpg|jpeg|png|gif|bmp|svg|webp")) {
-            return "Images";
-        }
-        // 문서 파일
-        if (extension.matches("pdf|doc|docx|txt|rtf|odt")) {
-            return "Documents";
-        }
-        // 비디오 파일
-        if (extension.matches("mp4|avi|mkv|mov|wmv|flv|webm")) {
-            return "Videos";
-        }
-        // 오디오 파일
-        if (extension.matches("mp3|wav|flac|aac|m4a|ogg")) {
-            return "Audio";
-        }
-        // 압축 파일
-        if (extension.matches("zip|rar|7z|tar|gz|bz2")) {
-            return "Archives";
-        }
-
-        return "Others";
-    }
-
-    /**
      * 스캔 시작 시 UI 업데이트
      */
     private void updateUIForScanStart() {
-        statusLabel.setText("Scanning files...");
+        statusLabel.setText("파일을 스캔하고 있습니다...");
         statusLabel.setStyle("-fx-text-fill: #007bff; -fx-font-weight: bold;"); // 파란색으로 변경
 
         progressBar.setProgress(0);
         progressBar.setVisible(true);  // 스캔 시작 시 표시
 
-        progressLabel.setText("0 / 0 files processed");
+        progressLabel.setText("0 / 0 파일 처리됨");
         progressLabel.setVisible(true);  // 스캔 시작 시 표시
     }
 
@@ -203,11 +126,11 @@ public class FileScanService {
      * 스캔 완료 시 UI 업데이트
      */
     private void updateUIForScanComplete(List<FileInfo> fileInfoList) {
-        statusLabel.setText("Scan completed: " + fileInfoList.size() + " files found");
+        statusLabel.setText("스캔 완료: " + fileInfoList.size() + "개 파일 발견");
         statusLabel.setStyle("-fx-text-fill: #28a745; -fx-font-weight: bold;"); // 초록색으로 변경
 
         progressBar.setProgress(1.0);
-        progressLabel.setText("Scan completed successfully");
+        progressLabel.setText("스캔이 성공적으로 완료되었습니다");
 
         // 다양한 상태 시뮬레이션을 위해 일부 파일의 상태 변경
         addVariousStatusForTesting(fileInfoList);
@@ -216,13 +139,64 @@ public class FileScanService {
         fileList.clear();
         fileList.addAll(fileInfoList);
 
-        System.out.println("[SUCCESS] Scanned " + fileInfoList.size() + " files");
-        for (FileInfo info : fileInfoList) {
-            System.out.println("  - " + info.getFileName() + " (" +
-                    info.getDetectedCategory() + ", " +
-                    info.getFormattedFileSize() + ", " +
-                    info.getStatus().getDisplayName() + ")");
+        System.out.println("[성공] " + fileInfoList.size() + "개 파일 스캔됨");
+
+        // 분석 결과 요약 출력
+        printAnalysisSummary(fileInfoList);
+    }
+
+    /**
+     * 분석 결과 요약 출력
+     */
+    private void printAnalysisSummary(List<FileInfo> fileInfoList) {
+        System.out.println("\n=== 📊 파일 분석 요약 ===");
+
+        // 카테고리별 통계
+        java.util.Map<String, Long> categoryStats = fileInfoList.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        f -> f.getDetectedCategory() != null ? f.getDetectedCategory() : "Unknown",
+                        java.util.stream.Collectors.counting()
+                ));
+
+        System.out.println("📂 카테고리별 파일:");
+        categoryStats.entrySet().stream()
+                .sorted(java.util.Map.Entry.<String, Long>comparingByValue().reversed())
+                .forEach(entry -> System.out.println("  • " + entry.getKey() + ": " + entry.getValue() + "개"));
+
+        // 서브카테고리 통계 (상위 5개)
+        java.util.Map<String, Long> subCategoryStats = fileInfoList.stream()
+                .filter(f -> f.getDetectedSubCategory() != null && !f.getDetectedSubCategory().equals("General"))
+                .collect(java.util.stream.Collectors.groupingBy(
+                        FileInfo::getDetectedSubCategory,
+                        java.util.stream.Collectors.counting()
+                ));
+
+        if (!subCategoryStats.isEmpty()) {
+            System.out.println("\n🎯 주요 서브카테고리:");
+            subCategoryStats.entrySet().stream()
+                    .sorted(java.util.Map.Entry.<String, Long>comparingByValue().reversed())
+                    .limit(5)
+                    .forEach(entry -> System.out.println("  • " + entry.getKey() + ": " + entry.getValue() + "개"));
         }
+
+        // 신뢰도 평균
+        double avgConfidence = fileInfoList.stream()
+                .mapToDouble(FileInfo::getConfidenceScore)
+                .average()
+                .orElse(0.0);
+
+        System.out.println("\n🎯 평균 분류 신뢰도: " + String.format("%.1f%%", avgConfidence * 100));
+
+        // 샘플 파일들 (분류가 잘 된 파일들)
+        System.out.println("\n📋 분석 샘플:");
+        fileInfoList.stream()
+                .filter(f -> f.getDetectedSubCategory() != null && !f.getDetectedSubCategory().equals("General"))
+                .limit(5)
+                .forEach(f -> System.out.println("  • " + f.getFileName() +
+                        " → " + f.getDetectedCategory() + "/" + f.getDetectedSubCategory() +
+                        " (" + String.format("%.0f%%", f.getConfidenceScore() * 100) + ")"));
+
+        System.out.println("========================\n");
     }
 
     /**
@@ -253,20 +227,20 @@ public class FileScanService {
             }
         }
 
-        System.out.println("[INFO] Added various status types for testing purposes");
+        System.out.println("[정보] 테스트용 다양한 상태 타입 추가됨");
     }
 
     /**
      * 스캔 오류 시 UI 업데이트
      */
     private void updateUIForScanError(Throwable error) {
-        statusLabel.setText("Scan failed: " + error.getMessage());
+        statusLabel.setText("스캔 실패: " + error.getMessage());
         statusLabel.setStyle("-fx-text-fill: #dc3545; -fx-font-weight: bold;"); // 빨간색으로 변경
 
         progressBar.setProgress(0);
-        progressLabel.setText("Scan failed");
+        progressLabel.setText("스캔 실패");
 
-        System.err.println("[ERROR] Scan failed: " + error.getMessage());
+        System.err.println("[오류] 스캔 실패: " + error.getMessage());
         error.printStackTrace();
     }
 }
