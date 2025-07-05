@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 파일 정보를 저장하는 모델 클래스
@@ -39,6 +41,7 @@ public class FileInfo {
     private String extractedTitle;      // 문서에서 추출한 제목
     private String extractedAuthor;     // 문서에서 추출한 작성자
     private String description;         // 파일 설명
+    private List<String> keywords;      // 키워드 목록 (AI 분석, 파일명 분석 등에서 추출)
 
     // 처리 상태
     private ProcessingStatus status;    // 처리 상태 열거형
@@ -56,6 +59,7 @@ public class FileInfo {
         this.confidenceScore = 0.0;
         this.createdDate = LocalDateTime.now();
         this.modifiedDate = LocalDateTime.now();
+        this.keywords = new ArrayList<>(); // 키워드 리스트 초기화
     }
 
     // 확장자 추출 메서드
@@ -72,7 +76,66 @@ public class FileInfo {
         return "unknown";
     }
 
-    // 유틸리티 메서드들
+    // 키워드 관련 유틸리티 메서드들
+
+    /**
+     * 키워드 추가
+     */
+    public void addKeyword(String keyword) {
+        if (keywords == null) {
+            keywords = new ArrayList<>();
+        }
+        if (keyword != null && !keyword.trim().isEmpty() && !keywords.contains(keyword.trim())) {
+            keywords.add(keyword.trim());
+        }
+    }
+
+    /**
+     * 여러 키워드 추가
+     */
+    public void addKeywords(List<String> newKeywords) {
+        if (newKeywords != null) {
+            for (String keyword : newKeywords) {
+                addKeyword(keyword);
+            }
+        }
+    }
+
+    /**
+     * 키워드 제거
+     */
+    public void removeKeyword(String keyword) {
+        if (keywords != null) {
+            keywords.remove(keyword);
+        }
+    }
+
+    /**
+     * 키워드 목록 초기화
+     */
+    public void clearKeywords() {
+        if (keywords == null) {
+            keywords = new ArrayList<>();
+        } else {
+            keywords.clear();
+        }
+    }
+
+    /**
+     * 특정 키워드 포함 여부 확인
+     */
+    public boolean hasKeyword(String keyword) {
+        return keywords != null && keywords.contains(keyword);
+    }
+
+    /**
+     * 키워드 개수 반환
+     */
+    public int getKeywordCount() {
+        return keywords != null ? keywords.size() : 0;
+    }
+
+    // 기존 유틸리티 메서드들
 
     /**
      * 파일 크기를 사람이 읽기 쉬운 형태로 포맷
@@ -156,6 +219,61 @@ public class FileInfo {
                 .status(ProcessingStatus.PENDING)
                 .confidenceScore(0.0)
                 .createdDate(LocalDateTime.now())
-                .modifiedDate(LocalDateTime.now());
+                .modifiedDate(LocalDateTime.now())
+                .keywords(new ArrayList<>()); // 키워드 리스트 초기화
+    }
+
+    /**
+     * 파일 정보 요약 반환
+     */
+    public String getSummary() {
+        StringBuilder summary = new StringBuilder();
+        summary.append("파일: ").append(fileName).append("\n");
+        summary.append("카테고리: ").append(detectedCategory != null ? detectedCategory : "미분류").append("\n");
+        summary.append("크기: ").append(getFormattedFileSize()).append("\n");
+        summary.append("상태: ").append(status != null ? status.getDisplayName() : "알 수 없음").append("\n");
+
+        if (keywords != null && !keywords.isEmpty()) {
+            summary.append("키워드: ").append(String.join(", ", keywords)).append("\n");
+        }
+
+        if (confidenceScore > 0) {
+            summary.append("신뢰도: ").append(String.format("%.0f%%", confidenceScore * 100)).append("\n");
+        }
+
+        return summary.toString();
+    }
+
+    /**
+     * 키워드를 문자열로 반환
+     */
+    public String getKeywordsAsString() {
+        return keywords != null ? String.join(", ", keywords) : "";
+    }
+
+    /**
+     * 파일이 분석 완료되었는지 확인
+     */
+    public boolean isAnalyzed() {
+        return status == ProcessingStatus.ANALYZED ||
+                status == ProcessingStatus.ORGANIZED;
+    }
+
+    /**
+     * 파일이 정리 가능한 상태인지 확인
+     */
+    public boolean isReadyForOrganization() {
+        return status == ProcessingStatus.ANALYZED &&
+                suggestedPath != null &&
+                !suggestedPath.trim().isEmpty();
+    }
+
+    /**
+     * 오류가 있는지 확인
+     */
+    public boolean hasError() {
+        return status == ProcessingStatus.FAILED &&
+                errorMessage != null &&
+                !errorMessage.trim().isEmpty();
     }
 }
