@@ -39,6 +39,8 @@ public class SmartFileManagerApp extends Application {
     private Label statusLabel;
     private Label progressLabel;
     private Button organizeButton;
+    private TableView<FileInfo> fileTable;
+    private VBox fileDetailPanel;
 
     @Override
     public void start(Stage primaryStage) {
@@ -55,7 +57,7 @@ public class SmartFileManagerApp extends Application {
         setupUIReferences(root);
 
         // 5. 이벤트 핸들러에 UI 컴포넌트 설정
-        eventHandlers.setUIComponents(progressBar, statusLabel, progressLabel, organizeButton);
+        eventHandlers.setUIComponents(progressBar, statusLabel, progressLabel, organizeButton, fileTable, fileDetailPanel);
 
         // 6. 씬 및 스테이지 설정
         setupStage(primaryStage, root);
@@ -136,10 +138,21 @@ public class SmartFileManagerApp extends Application {
         statusLabel = (Label) root.lookup("#statusLabel");
         progressLabel = (Label) root.lookup("#progressLabel");
         organizeButton = (Button) root.lookup("#organizeButton");
+        fileTable = (TableView<FileInfo>) root.lookup("#fileTable");
+        fileDetailPanel = (VBox) root.lookup("#fileDetailPanel");
 
         // 컴포넌트가 정상적으로 찾아졌는지 확인
-        if (progressBar == null || statusLabel == null || progressLabel == null || organizeButton == null) {
+        if (progressBar == null || statusLabel == null || progressLabel == null ||
+                organizeButton == null || fileTable == null || fileDetailPanel == null) {
             System.err.println("[WARNING] Some UI components could not be found by ID");
+            System.err.println("ProgressBar: " + (progressBar != null ? "✓" : "✗"));
+            System.err.println("StatusLabel: " + (statusLabel != null ? "✓" : "✗"));
+            System.err.println("ProgressLabel: " + (progressLabel != null ? "✓" : "✗"));
+            System.err.println("OrganizeButton: " + (organizeButton != null ? "✓" : "✗"));
+            System.err.println("FileTable: " + (fileTable != null ? "✓" : "✗"));
+            System.err.println("FileDetailPanel: " + (fileDetailPanel != null ? "✓" : "✗"));
+        } else {
+            System.out.println("[SUCCESS] All UI components found successfully");
         }
     }
 

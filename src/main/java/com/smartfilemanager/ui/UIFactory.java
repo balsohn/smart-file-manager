@@ -146,34 +146,165 @@ public class UIFactory {
     }
 
     /**
-     * 파일 테이블 섹션 생성
+     * 파일 테이블 섹션 생성 (강화된 버전)
      */
     public static VBox createTableSection(ObservableList<FileInfo> fileList) {
         VBox tableSection = new VBox(10);
+
+        // 테이블 헤더 (제목 + 통계)
+        HBox tableHeader = createTableHeader(fileList);
+
+        // 테이블 생성
+        TableView<FileInfo> fileTable = createEnhancedFileTable(fileList);
+
+        // 파일 상세 정보 패널
+        VBox detailPanel = createFileDetailPanel();
+
+        tableSection.getChildren().addAll(tableHeader, fileTable, detailPanel);
+        VBox.setVgrow(fileTable, Priority.ALWAYS);
+
+        return tableSection;
+    }
+
+    /**
+     * 테이블 헤더 생성 (제목 + 통계 정보)
+     */
+    private static HBox createTableHeader(ObservableList<FileInfo> fileList) {
+        HBox header = new HBox(20);
+        header.setAlignment(Pos.CENTER_LEFT);
 
         // 테이블 제목
         Label tableTitle = new Label("File List");
         tableTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
         tableTitle.setStyle("-fx-text-fill: #495057;");
 
-        // 테이블 생성
+        // 통계 라벨
+        Label statsLabel = new Label("0 files");
+        statsLabel.setId("statsLabel");
+        statsLabel.setFont(Font.font("System", 12));
+        statsLabel.setStyle("-fx-text-fill: #6c757d;");
+
+        // 실시간 통계 업데이트
+        fileList.addListener((javafx.collections.ListChangeListener<FileInfo>) change -> {
+            updateStatsLabel(statsLabel, fileList);
+        });
+
+        header.getChildren().addAll(tableTitle, statsLabel);
+        return header;
+    }
+
+    /**
+     * 강화된 파일 테이블 생성
+     */
+    private static TableView<FileInfo> createEnhancedFileTable(ObservableList<FileInfo> fileList) {
         TableView<FileInfo> fileTable = new TableView<>();
         fileTable.setPrefHeight(300);
         fileTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        fileTable.setId("fileTable");
 
-        // 테이블 컬럼들 (Lombok FileInfo에 맞게 수정)
+        // 컬럼들 생성
+        TableColumn<FileInfo, String> nameColumn = createNameColumn();
+        TableColumn<FileInfo, String> typeColumn = createTypeColumn();
+        TableColumn<FileInfo, String> sizeColumn = createSizeColumn();
+        TableColumn<FileInfo, String> statusColumn = createStatusColumn();
+        TableColumn<FileInfo, String> dateColumn = createDateColumn();
+
+        // 정렬 가능하도록 설정
+        nameColumn.setSortable(true);
+        typeColumn.setSortable(true);
+        sizeColumn.setSortable(true);
+        statusColumn.setSortable(true);
+        dateColumn.setSortable(true);
+
+        // 기본 정렬: 파일명 오름차순
+        fileTable.getSortOrder().add(nameColumn);
+
+        fileTable.getColumns().addAll(nameColumn, typeColumn, sizeColumn, statusColumn, dateColumn);
+
+        // 빈 테이블 플레이스홀더
+        Label placeholder = new Label("No files scanned yet.\n\nClick 'Scan Folder' to analyze files in a directory.");
+        placeholder.setStyle("-fx-text-fill: #6c757d; -fx-text-alignment: center;");
+        fileTable.setPlaceholder(placeholder);
+
+        // 파일 목록 바인딩
+        fileTable.setItems(fileList);
+
+        // 행 선택 이벤트 (상세 정보 표시용)
+        fileTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+            if (newSelection != null) {
+                updateFileDetailPanel(newSelection);
+            }
+        });
+
+        // 컨텍스트 메뉴 추가
+        fileTable.setContextMenu(createTableContextMenu(fileTable));
+
+        return fileTable;
+    }
+
+    /**
+     * 파일명 컬럼 생성
+     */
+    private static TableColumn<FileInfo, String> createNameColumn() {
         TableColumn<FileInfo, String> nameColumn = new TableColumn<>("File Name");
-        nameColumn.setPrefWidth(200);
+        nameColumn.setPrefWidth(250);
         nameColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFileName()));
 
-        TableColumn<FileInfo, String> typeColumn = new TableColumn<>("Category");
-        typeColumn.setPrefWidth(100);
-        typeColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getDetectedCategory()));
+        // 파일명에 아이콘 추가
+        nameColumn.setCellFactory(column -> new TableCell<FileInfo, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    FileInfo fileInfo = getTableView().getItems().get(getIndex());
+                    String icon = getFileIcon(fileInfo.getDetectedCategory());
+                    setText(icon + " " + item);
+                }
+            }
+        });
 
+        return nameColumn;
+    }
+
+    /**
+     * 카테고리 컬럼 생성
+     */
+    private static TableColumn<FileInfo, String> createTypeColumn() {
+        TableColumn<FileInfo, String> typeColumn = new TableColumn<>("Category");
+        typeColumn.setPrefWidth(120);
+        typeColumn.setCellValueFactory(cellData -> {
+            String category = cellData.getValue().getDetectedCategory();
+            return new javafx.beans.property.SimpleStringProperty(category != null ? category : "Unknown");
+        });
+        return typeColumn;
+    }
+
+    /**
+     * 크기 컬럼 생성
+     */
+    private static TableColumn<FileInfo, String> createSizeColumn() {
         TableColumn<FileInfo, String> sizeColumn = new TableColumn<>("Size");
         sizeColumn.setPrefWidth(100);
         sizeColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFormattedFileSize()));
 
+        // 크기 기준 정렬을 위해 Comparator 설정
+        sizeColumn.setComparator((size1, size2) -> {
+            // 문자열을 바이트로 변환해서 비교
+            long bytes1 = parseSizeToBytes(size1);
+            long bytes2 = parseSizeToBytes(size2);
+            return Long.compare(bytes1, bytes2);
+        });
+
+        return sizeColumn;
+    }
+
+    /**
+     * 상태 컬럼 생성 (색상 표시 포함)
+     */
+    private static TableColumn<FileInfo, String> createStatusColumn() {
         TableColumn<FileInfo, String> statusColumn = new TableColumn<>("Status");
         statusColumn.setPrefWidth(120);
         statusColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getStatus().getDisplayName()));
@@ -187,34 +318,206 @@ public class UIFactory {
                     setText(null);
                     setStyle("");
                 } else {
-                    setText(item);
-                    // ProcessingStatus enum의 색상 코드 사용
-                    TableRow<FileInfo> currentRow = getTableRow();
-                    if (currentRow != null && currentRow.getItem() != null) {
-                        ProcessingStatus status = currentRow.getItem().getStatus();
-                        setStyle("-fx-text-fill: " + status.getColorCode() + ";");
-                    }
+                    FileInfo fileInfo = getTableView().getItems().get(getIndex());
+                    ProcessingStatus status = fileInfo.getStatus();
+
+                    // 상태 아이콘과 텍스트
+                    String statusText = getStatusIcon(status) + " " + status.getDisplayName();
+                    setText(statusText);
+
+                    // 색상 적용
+                    setStyle("-fx-text-fill: " + status.getColorCode() + "; -fx-font-weight: bold;");
                 }
             }
         });
 
-        fileTable.getColumns().addAll(nameColumn, typeColumn, sizeColumn, statusColumn);
+        return statusColumn;
+    }
 
-        // 빈 테이블 플레이스홀더
-        Label placeholder = new Label("No files scanned yet. Click 'Scan Folder' to begin.");
-        placeholder.setStyle("-fx-text-fill: #6c757d;");
-        fileTable.setPlaceholder(placeholder);
+    /**
+     * 날짜 컬럼 생성
+     */
+    private static TableColumn<FileInfo, String> createDateColumn() {
+        TableColumn<FileInfo, String> dateColumn = new TableColumn<>("Modified");
+        dateColumn.setPrefWidth(140);
+        dateColumn.setCellValueFactory(cellData -> {
+            if (cellData.getValue().getModifiedDate() != null) {
+                String formattedDate = cellData.getValue().getModifiedDate()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+                return new javafx.beans.property.SimpleStringProperty(formattedDate);
+            }
+            return new javafx.beans.property.SimpleStringProperty("-");
+        });
+        return dateColumn;
+    }
 
-        // 파일 목록 바인딩
-        fileTable.setItems(fileList);
+    /**
+     * 파일 상세 정보 패널 생성
+     */
+    private static VBox createFileDetailPanel() {
+        VBox detailPanel = new VBox(5);
+        detailPanel.setPadding(new Insets(10));
+        detailPanel.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #dee2e6; -fx-border-width: 1px;");
+        detailPanel.setMaxHeight(100);
+        detailPanel.setId("fileDetailPanel");
 
-        // 테이블에 ID 설정 (외부에서 접근용)
-        fileTable.setId("fileTable");
+        Label detailTitle = new Label("File Details");
+        detailTitle.setFont(Font.font("System", FontWeight.BOLD, 12));
+        detailTitle.setStyle("-fx-text-fill: #495057;");
 
-        tableSection.getChildren().addAll(tableTitle, fileTable);
-        VBox.setVgrow(fileTable, Priority.ALWAYS);
+        Label detailContent = new Label("Select a file to view details");
+        detailContent.setId("detailContent");
+        detailContent.setStyle("-fx-text-fill: #6c757d;");
+        detailContent.setWrapText(true);
 
-        return tableSection;
+        detailPanel.getChildren().addAll(detailTitle, detailContent);
+        detailPanel.setVisible(false); // 처음에는 숨김
+
+        return detailPanel;
+    }
+
+    /**
+     * 테이블 컨텍스트 메뉴 생성
+     */
+    private static ContextMenu createTableContextMenu(TableView<FileInfo> fileTable) {
+        ContextMenu contextMenu = new ContextMenu();
+
+        MenuItem viewDetails = new MenuItem("View Details");
+        viewDetails.setOnAction(e -> {
+            FileInfo selected = fileTable.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                showFileDetailsDialog(selected);
+            }
+        });
+
+        MenuItem openLocation = new MenuItem("Open File Location");
+        openLocation.setOnAction(e -> {
+            FileInfo selected = fileTable.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                openFileLocation(selected);
+            }
+        });
+
+        MenuItem copyPath = new MenuItem("Copy File Path");
+        copyPath.setOnAction(e -> {
+            FileInfo selected = fileTable.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                copyToClipboard(selected.getFilePath());
+            }
+        });
+
+        contextMenu.getItems().addAll(viewDetails, openLocation, new SeparatorMenuItem(), copyPath);
+        return contextMenu;
+    }
+
+    // 헬퍼 메서드들
+
+    private static void updateStatsLabel(Label statsLabel, ObservableList<FileInfo> fileList) {
+        if (fileList.isEmpty()) {
+            statsLabel.setText("0 files");
+            return;
+        }
+
+        long totalSize = fileList.stream().mapToLong(FileInfo::getFileSize).sum();
+        String formattedSize = formatFileSize(totalSize);
+
+        long analyzedCount = fileList.stream().filter(f -> f.getStatus().isCompleted()).count();
+
+        statsLabel.setText(String.format("%d files (%s) • %d analyzed",
+                fileList.size(), formattedSize, analyzedCount));
+    }
+
+    private static String getFileIcon(String category) {
+        if (category == null) return "[FILE]";
+        switch (category.toLowerCase()) {
+            case "images": return "[IMG]";
+            case "documents": return "[DOC]";
+            case "videos": return "[VID]";
+            case "audio": return "[AUD]";
+            case "archives": return "[ZIP]";
+            default: return "[FILE]";
+        }
+    }
+
+    private static String getStatusIcon(ProcessingStatus status) {
+        switch (status) {
+            case PENDING: return "[WAIT]";
+            case SCANNING: return "[SCAN]";
+            case ANALYZED: return "[DONE]";
+            case ORGANIZING: return "[WORK]";
+            case ORGANIZED: return "[OK]";
+            case FAILED: return "[ERR]";
+            case SKIPPED: return "[SKIP]";
+            default: return "[?]";
+        }
+    }
+
+    private static long parseSizeToBytes(String sizeStr) {
+        try {
+            if (sizeStr.endsWith(" B")) {
+                return Long.parseLong(sizeStr.replace(" B", ""));
+            } else if (sizeStr.endsWith(" KB")) {
+                return (long) (Double.parseDouble(sizeStr.replace(" KB", "")) * 1024);
+            } else if (sizeStr.endsWith(" MB")) {
+                return (long) (Double.parseDouble(sizeStr.replace(" MB", "")) * 1024 * 1024);
+            } else if (sizeStr.endsWith(" GB")) {
+                return (long) (Double.parseDouble(sizeStr.replace(" GB", "")) * 1024 * 1024 * 1024);
+            }
+        } catch (NumberFormatException e) {
+            // 파싱 실패 시 0 반환
+        }
+        return 0;
+    }
+
+    private static void updateFileDetailPanel(FileInfo fileInfo) {
+        // This method will be handled by FileDetailManager
+        // Just log the selection for now
+        System.out.println("[INFO] Selected file: " + fileInfo.getFileName());
+    }
+
+    private static void showFileDetailsDialog(FileInfo fileInfo) {
+        StringBuilder details = new StringBuilder();
+        details.append("File Name: ").append(fileInfo.getFileName()).append("\n");
+        details.append("Path: ").append(fileInfo.getFilePath()).append("\n");
+        details.append("Size: ").append(fileInfo.getFormattedFileSize()).append("\n");
+        details.append("Category: ").append(fileInfo.getDetectedCategory()).append("\n");
+        details.append("Extension: ").append(fileInfo.getFileExtension()).append("\n");
+        details.append("Status: ").append(fileInfo.getStatus().getDisplayName()).append("\n");
+        if (fileInfo.getModifiedDate() != null) {
+            details.append("Modified: ").append(fileInfo.getModifiedDate().toString()).append("\n");
+        }
+
+        showInfoDialog("File Details", details.toString());
+    }
+
+    private static void openFileLocation(FileInfo fileInfo) {
+        try {
+            String os = System.getProperty("os.name").toLowerCase();
+            if (os.contains("windows")) {
+                Runtime.getRuntime().exec("explorer /select," + fileInfo.getFilePath());
+            } else if (os.contains("mac")) {
+                Runtime.getRuntime().exec("open -R " + fileInfo.getFilePath());
+            } else {
+                // Linux
+                Runtime.getRuntime().exec("xdg-open " + fileInfo.getOriginalLocation());
+            }
+        } catch (Exception e) {
+            showInfoDialog("Error", "Could not open file location: " + e.getMessage());
+        }
+    }
+
+    private static void copyToClipboard(String text) {
+        javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
+        javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+        content.putString(text);
+        clipboard.setContent(content);
+    }
+
+    private static String formatFileSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
+        return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
     }
 
     /**

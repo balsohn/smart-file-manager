@@ -110,16 +110,41 @@ public class FileScanService {
      * 파일 정보 생성 (Lombok FileInfo 사용)
      */
     private FileInfo createFileInfo(File file) {
-        return FileInfo.defaultBuilder()
-                .fileName(file.getName())
-                .filePath(file.getAbsolutePath())
-                .originalLocation(file.getAbsolutePath())
-                .fileSize(file.length())
-                .fileExtension(getFileExtension(file.getName()))
-                .detectedCategory(detectCategoryFromExtension(file.getName()))
-                .status(ProcessingStatus.ANALYZED)
-                .processedAt(LocalDateTime.now())
-                .build();
+        try {
+            // 실제 파일의 수정 날짜 가져오기
+            java.nio.file.Path path = file.toPath();
+            java.nio.file.attribute.BasicFileAttributes attrs = java.nio.file.Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes.class);
+
+            LocalDateTime createdTime = LocalDateTime.ofInstant(attrs.creationTime().toInstant(), java.time.ZoneId.systemDefault());
+            LocalDateTime modifiedTime = LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(), java.time.ZoneId.systemDefault());
+
+            return FileInfo.defaultBuilder()
+                    .fileName(file.getName())
+                    .filePath(file.getAbsolutePath())
+                    .originalLocation(file.getAbsolutePath())
+                    .fileSize(file.length())
+                    .fileExtension(getFileExtension(file.getName()))
+                    .detectedCategory(detectCategoryFromExtension(file.getName()))
+                    .createdDate(createdTime)
+                    .modifiedDate(modifiedTime)
+                    .status(ProcessingStatus.ANALYZED)
+                    .processedAt(LocalDateTime.now())
+                    .build();
+        } catch (Exception e) {
+            System.err.println("[ERROR] Failed to read file attributes for: " + file.getName() + " - " + e.getMessage());
+
+            // 오류 발생 시 기본값으로 생성
+            return FileInfo.defaultBuilder()
+                    .fileName(file.getName())
+                    .filePath(file.getAbsolutePath())
+                    .originalLocation(file.getAbsolutePath())
+                    .fileSize(file.length())
+                    .fileExtension(getFileExtension(file.getName()))
+                    .detectedCategory(detectCategoryFromExtension(file.getName()))
+                    .status(ProcessingStatus.ANALYZED)
+                    .processedAt(LocalDateTime.now())
+                    .build();
+        }
     }
 
     /**
@@ -184,6 +209,9 @@ public class FileScanService {
         progressBar.setProgress(1.0);
         progressLabel.setText("Scan completed successfully");
 
+        // 다양한 상태 시뮬레이션을 위해 일부 파일의 상태 변경
+        addVariousStatusForTesting(fileInfoList);
+
         // 파일 목록을 UI 테이블에 추가
         fileList.clear();
         fileList.addAll(fileInfoList);
@@ -192,8 +220,40 @@ public class FileScanService {
         for (FileInfo info : fileInfoList) {
             System.out.println("  - " + info.getFileName() + " (" +
                     info.getDetectedCategory() + ", " +
-                    info.getFormattedFileSize() + ")");
+                    info.getFormattedFileSize() + ", " +
+                    info.getStatus().getDisplayName() + ")");
         }
+    }
+
+    /**
+     * 테스트를 위해 다양한 상태 추가
+     */
+    private void addVariousStatusForTesting(List<FileInfo> fileInfoList) {
+        if (fileInfoList.size() >= 5) {
+            // 첫 번째 파일: ORGANIZED
+            fileInfoList.get(0).setStatus(ProcessingStatus.ORGANIZED);
+
+            // 두 번째 파일: PENDING
+            fileInfoList.get(1).setStatus(ProcessingStatus.PENDING);
+
+            // 세 번째 파일: FAILED
+            if (fileInfoList.size() > 2) {
+                fileInfoList.get(2).setStatus(ProcessingStatus.FAILED);
+                fileInfoList.get(2).setErrorMessage("Permission denied");
+            }
+
+            // 네 번째 파일: SKIPPED
+            if (fileInfoList.size() > 3) {
+                fileInfoList.get(3).setStatus(ProcessingStatus.SKIPPED);
+            }
+
+            // 다섯 번째 파일: ORGANIZING
+            if (fileInfoList.size() > 4) {
+                fileInfoList.get(4).setStatus(ProcessingStatus.ORGANIZING);
+            }
+        }
+
+        System.out.println("[INFO] Added various status types for testing purposes");
     }
 
     /**
