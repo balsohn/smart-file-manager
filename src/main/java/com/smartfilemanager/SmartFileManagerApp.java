@@ -1,5 +1,9 @@
 package com.smartfilemanager;
 
+import com.smartfilemanager.model.AppConfig;
+import com.smartfilemanager.service.ConfigService;
+import com.smartfilemanager.ui.SystemTrayManager;
+import com.smartfilemanager.ui.ThemeManager;
 import com.smartfilemanager.util.Messages;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -42,13 +46,41 @@ public class SmartFileManagerApp extends Application {
             // 2. 씬 생성
             Scene scene = new Scene(root, 900, 700);
 
-            // 3. CSS 스타일시트 적용
-            applyCSSStyles(scene);
+            // 3. 설정 로드 및 테마 적용
+            ConfigService configService = new ConfigService();
+            AppConfig config = configService.getCurrentConfig();
+
+            // 테마 매니저에 씬 등록
+            ThemeManager.setScene(scene);
+
+            // 설정에서 테마 적용
+            if (config.getTheme() != null) {
+                ThemeManager.applyThemeById(config.getTheme());
+            } else {
+                // 기본 CSS 스타일시트 적용
+                applyCSSStyles(scene);
+            }
 
             // 4. 스테이지 설정
             setupStage(primaryStage, scene);
 
-            // 5. 애플리케이션 표시
+            // 5. 시스템 트레이 설정 (설정에 따라)
+            if (config.isMinimizeToTray()) {
+                boolean traySetup = SystemTrayManager.setupSystemTray(primaryStage);
+                if (traySetup) {
+                    System.out.println("[SUCCESS] 시스템 트레이 설정 완료");
+
+                    // 창 닫기 이벤트를 트레이로 최소화로 변경
+                    primaryStage.setOnCloseRequest(event -> {
+                        event.consume(); // 기본 닫기 동작 취소
+                        SystemTrayManager.minimizeToTray();
+                    });
+                } else {
+                    System.out.println("[WARNING] 시스템 트레이 설정 실패 - 일반 모드로 동작");
+                }
+            }
+
+            // 6. 애플리케이션 표시
             primaryStage.show();
 
             System.out.println("[START] " + Messages.get("app.title") + " 시작 완료!");
@@ -56,22 +88,18 @@ public class SmartFileManagerApp extends Application {
         } catch (Exception e) {
             System.err.println("[ERROR] 애플리케이션 시작 실패: " + e.getMessage());
             e.printStackTrace();
-
-            // 오류 발생 시 사용자에게 알림
             showErrorAndExit("애플리케이션을 시작할 수 없습니다", e.getMessage());
         }
     }
 
     /**
-     * CSS 스타일시트 적용
-     *
-     * @param scene 스타일을 적용할 씬
+     * CSS 스타일시트 적용 (테마 미사용 시 폴백)
      */
     private void applyCSSStyles(Scene scene) {
         try {
             String cssPath = getClass().getResource("/css/styles.css").toExternalForm();
             scene.getStylesheets().add(cssPath);
-            System.out.println("[SUCCESS] CSS 스타일시트 로드 완료");
+            System.out.println("[SUCCESS] 기본 CSS 스타일시트 로드 완료");
         } catch (Exception e) {
             System.out.println("[WARNING] CSS 파일을 찾을 수 없습니다. 기본 스타일을 사용합니다.");
             System.out.println("[WARNING] 오류 내용: " + e.getMessage());
@@ -145,17 +173,14 @@ public class SmartFileManagerApp extends Application {
     }
 
     /**
-     * 애플리케이션 종료 시 호출되는 메서드
-     * 리소스 정리 등의 작업을 수행합니다.
+     * 애플리케이션 종료 시 호출
      */
     @Override
     public void stop() throws Exception {
         System.out.println("[STOP] " + Messages.get("app.title") + " 종료 중...");
 
-        // 향후 필요 시 리소스 정리 작업 추가
-        // - 데이터베이스 연결 종료
-        // - 백그라운드 스레드 정리
-        // - 임시 파일 정리 등
+        // 시스템 트레이에서 제거
+        SystemTrayManager.removeFromTray();
 
         super.stop();
         System.out.println("[STOP] 애플리케이션 종료 완료");

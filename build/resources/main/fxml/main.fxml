@@ -16,7 +16,7 @@
                     <items>
                         <MenuItem fx:id="openFolderMenuItem" text="📂 폴더 열기..." onAction="#handleOpenFolder" />
                         <SeparatorMenuItem />
-                        <MenuItem fx:id="settingsMenuItem" text="⚙️ 설정" onAction="#handleOpenSettings" />
+                        <MenuItem fx:id="settingsMenuItem" text="⚙️ 설정" onAction="#handleSettings" />
                         <SeparatorMenuItem />
                         <MenuItem fx:id="exitMenuItem" text="🚪 종료" onAction="#handleExit" />
                     </items>
@@ -85,7 +85,7 @@
                             <Font name="System Bold" size="14.0" />
                         </font>
                     </Button>
-                    <Button fx:id="settingsButton" text="⚙️ 설정" onAction="#handleOpenSettings" prefWidth="120.0" prefHeight="40.0" styleClass="settings-button">
+                    <Button fx:id="settingsButton" text="⚙️ 설정" onAction="#handleSettings" prefWidth="120.0" prefHeight="40.0" styleClass="settings-button">
                         <font>
                             <Font name="System Bold" size="14.0" />
                         </font>

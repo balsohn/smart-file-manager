@@ -2,6 +2,7 @@ package com.smartfilemanager.controller;
 
 import com.smartfilemanager.model.AppConfig;
 import com.smartfilemanager.service.ConfigService;
+import com.smartfilemanager.ui.ThemeManager;
 import com.smartfilemanager.ui.UIFactory;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -11,6 +12,8 @@ import javafx.stage.Stage;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ResourceBundle;
 
 /**
@@ -133,34 +136,185 @@ public class SettingsController implements Initializable {
     }
 
     /**
-     * 이벤트 핸들러들 설정
+     * 테마 변경 처리
+     */
+    private void handleThemeChange() {
+        String selectedTheme = themeComboBox.getValue();
+        if (selectedTheme != null) {
+            // 테마 이름에서 ID 추출
+            String themeId = selectedTheme.toLowerCase().contains("dark") ? "dark" : "light";
+
+            try {
+                ThemeManager.applyThemeById(themeId);
+                System.out.println("[INFO] 테마 변경됨: " + selectedTheme);
+
+                // 즉시 미리보기 제공
+                showThemePreview(selectedTheme);
+
+            } catch (Exception e) {
+                System.err.println("[ERROR] 테마 적용 실패: " + e.getMessage());
+
+                // 실패 시 이전 테마로 복원
+                String currentThemeId = ThemeManager.getCurrentThemeId();
+                loadThemeToComboBox(currentThemeId);
+            }
+        }
+    }
+
+    /**
+     * 테마 미리보기 메시지
+     */
+    private void showThemePreview(String themeName) {
+        // 간단한 툴팁이나 상태 메시지로 피드백 제공
+        themeComboBox.setTooltip(new Tooltip("현재 적용됨: " + themeName));
+    }
+
+    /**
+     * 테마를 콤보박스에 로드
+     */
+    private void loadThemeToComboBox(String themeId) {
+        if (themeId == null) themeId = "light";
+
+        String[] themeNames = ThemeManager.getThemeNames();
+        for (String themeName : themeNames) {
+            if ((themeId.equals("light") && themeName.contains("Light")) ||
+                    (themeId.equals("dark") && themeName.contains("Dark"))) {
+                themeComboBox.setValue(themeName);
+                break;
+            }
+        }
+    }
+
+    /**
+     * 언어를 콤보박스에 로드
+     */
+    private void loadLanguageToComboBox(String languageCode) {
+        if (languageCode == null) languageCode = "ko";
+
+        switch (languageCode) {
+            case "ko":
+                languageComboBox.setValue("한국어 (ko)");
+                break;
+            case "en":
+                languageComboBox.setValue("English (en)");
+                break;
+            default:
+                languageComboBox.setValue("한국어 (ko)");
+                break;
+        }
+    }
+
+    /**
+     * UI에서 설정 수집
+     */
+    private AppConfig collectConfigFromUI() {
+        AppConfig config = new AppConfig();
+
+        // 기본 설정
+        config.setDefaultScanFolder(defaultScanFolderField.getText().trim());
+        config.setOrganizationRootFolder(organizationFolderField.getText().trim());
+        config.setAutoOrganizeEnabled(autoOrganizeCheckBox.isSelected());
+        config.setRealTimeMonitoring(realTimeMonitoringCheckBox.isSelected());
+        config.setShowNotifications(showNotificationsCheckBox.isSelected());
+        config.setOrganizeByDate(organizeByDateCheckBox.isSelected());
+        config.setCreateSubfolders(createSubfoldersCheckBox.isSelected());
+        config.setBackupBeforeOrganizing(backupBeforeOrganizingCheckBox.isSelected());
+
+        // 중복 파일 설정
+        config.setEnableDuplicateDetection(enableDuplicateDetectionCheckBox.isSelected());
+        config.setAutoResolveDuplicates(autoResolveDuplicatesCheckBox.isSelected());
+        config.setDuplicateResolutionStrategy(getDuplicateStrategyFromComboBox());
+
+        // 성능 설정
+        config.setMaxFileSizeForAnalysis(maxFileSizeSpinner.getValue());
+        config.setMonitoringInterval(monitoringIntervalSpinner.getValue());
+        config.setMaxFileCount(maxFileCountSpinner.getValue());
+        config.setEnableContentAnalysis(enableContentAnalysisCheckBox.isSelected());
+        config.setEnableAIAnalysis(enableAIAnalysisCheckBox.isSelected());
+        config.setAiApiKey(aiApiKeyField.getText().trim());
+
+        // UI 설정
+        config.setLanguage(getLanguageFromComboBox());
+        config.setTheme(getThemeFromComboBox());
+        config.setMinimizeToTray(minimizeToTrayCheckBox.isSelected());
+        config.setStartWithWindows(startWithWindowsCheckBox.isSelected());
+        config.setDebugMode(debugModeCheckBox.isSelected());
+
+        return config;
+    }
+
+    /**
+     * 콤보박스에서 테마 ID 추출
+     */
+    private String getThemeFromComboBox() {
+        String selectedTheme = themeComboBox.getValue();
+        if (selectedTheme != null) {
+            return selectedTheme.toLowerCase().contains("dark") ? "dark" : "light";
+        }
+        return "light";
+    }
+
+    /**
+     * 콤보박스에서 중복 해결 전략 추출
+     */
+    private String getDuplicateStrategyFromComboBox() {
+        String selectedStrategy = duplicateStrategyComboBox.getValue();
+        if (selectedStrategy != null) {
+            if (selectedStrategy.contains("KEEP_NEWEST")) {
+                return "KEEP_NEWEST";
+            } else if (selectedStrategy.contains("KEEP_LARGEST")) {
+                return "KEEP_LARGEST";
+            } else if (selectedStrategy.contains("ASK_USER")) {
+                return "ASK_USER";
+            }
+        }
+        return "ASK_USER"; // 기본값
+    }
+
+    /**
+     * 콤보박스에서 언어 코드 추출
+     */
+    private String getLanguageFromComboBox() {
+        String selectedLanguage = languageComboBox.getValue();
+        if (selectedLanguage != null) {
+            if (selectedLanguage.contains("(en)")) {
+                return "en";
+            } else if (selectedLanguage.contains("(ko)")) {
+                return "ko";
+            }
+        }
+        return "ko"; // 기본값
+    }
+
+    /**
+     * 이벤트 핸들러 설정
      */
     private void setupEventHandlers() {
-        // 자동 정리 체크박스와 실시간 모니터링 연동
-        autoOrganizeCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            if (!newVal) {
-                realTimeMonitoringCheckBox.setSelected(false);
+        // 폴더 선택 버튼들
+        browseScanFolderButton.setOnAction(e -> handleBrowseScanFolder());
+        browseOrganizationFolderButton.setOnAction(e -> handleBrowseOrganizationFolder());
+
+        // AI 분석 체크박스 변경 시 API 키 필드 활성화/비활성화
+        enableAIAnalysisCheckBox.setOnAction(e -> {
+            boolean aiEnabled = enableAIAnalysisCheckBox.isSelected();
+            aiApiKeyField.setDisable(!aiEnabled);
+            if (!aiEnabled) {
+                aiApiKeyField.clear();
             }
-            realTimeMonitoringCheckBox.setDisable(!newVal);
         });
 
-        // 중복 탐지와 자동 해결 연동
-        enableDuplicateDetectionCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            autoResolveDuplicatesCheckBox.setDisable(!newVal);
-            duplicateStrategyComboBox.setDisable(!newVal || !autoResolveDuplicatesCheckBox.isSelected());
+        // 중복 파일 탐지 체크박스 변경 시 관련 옵션들 활성화/비활성화
+        enableDuplicateDetectionCheckBox.setOnAction(e -> {
+            boolean duplicateEnabled = enableDuplicateDetectionCheckBox.isSelected();
+            autoResolveDuplicatesCheckBox.setDisable(!duplicateEnabled);
+            duplicateStrategyComboBox.setDisable(!duplicateEnabled || !autoResolveDuplicatesCheckBox.isSelected());
         });
 
-        autoResolveDuplicatesCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            duplicateStrategyComboBox.setDisable(!newVal || !enableDuplicateDetectionCheckBox.isSelected());
+        // 자동 중복 해결 체크박스 변경 시 전략 콤보박스 활성화/비활성화
+        autoResolveDuplicatesCheckBox.setOnAction(e -> {
+            boolean autoResolve = autoResolveDuplicatesCheckBox.isSelected();
+            duplicateStrategyComboBox.setDisable(!autoResolve);
         });
-
-        // AI 분석과 API 키 연동
-        enableAIAnalysisCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            aiApiKeyField.setDisable(!newVal);
-        });
-
-        // 초기 상태 설정 (기본값에 따라)
-        setInitialUIStates();
     }
 
     /**
@@ -180,17 +334,19 @@ public class SettingsController implements Initializable {
     }
 
     /**
-     * 설정 값을 UI에 로드
+     * 설정을 UI에 로드
      */
     private void loadConfigToUI(AppConfig config) {
-        // 기본 설정
-        defaultScanFolderField.setText(config.getDefaultScanFolder());
-        organizationFolderField.setText(config.getOrganizationRootFolder());
+        // 기본 설정들
+        defaultScanFolderField.setText(config.getDefaultScanFolder() != null ?
+                config.getDefaultScanFolder() : "");
+        organizationFolderField.setText(config.getOrganizationRootFolder() != null ?
+                config.getOrganizationRootFolder() : "");
 
+        // 체크박스들
         autoOrganizeCheckBox.setSelected(config.isAutoOrganizeEnabled());
         realTimeMonitoringCheckBox.setSelected(config.isRealTimeMonitoring());
         showNotificationsCheckBox.setSelected(config.isShowNotifications());
-
         organizeByDateCheckBox.setSelected(config.isOrganizeByDate());
         createSubfoldersCheckBox.setSelected(config.isCreateSubfolders());
         backupBeforeOrganizingCheckBox.setSelected(config.isBackupBeforeOrganizing());
@@ -199,33 +355,26 @@ public class SettingsController implements Initializable {
         enableDuplicateDetectionCheckBox.setSelected(config.isEnableDuplicateDetection());
         autoResolveDuplicatesCheckBox.setSelected(config.isAutoResolveDuplicates());
 
-        // 중복 해결 전략 매핑
-        String strategy = config.getDuplicateResolutionStrategy();
-        switch (strategy) {
-            case "KEEP_NEWEST": duplicateStrategyComboBox.setValue("최신 파일 유지"); break;
-            case "KEEP_LARGEST": duplicateStrategyComboBox.setValue("큰 파일 유지"); break;
-            case "KEEP_SMALLEST": duplicateStrategyComboBox.setValue("작은 파일 유지"); break;
-            default: duplicateStrategyComboBox.setValue("사용자에게 물어보기"); break;
-        }
+        // 중복 해결 전략 로드
+        loadDuplicateStrategyToComboBox(config.getDuplicateResolutionStrategy());
 
         // 성능 설정
         maxFileSizeSpinner.getValueFactory().setValue(config.getMaxFileSizeForAnalysis());
         monitoringIntervalSpinner.getValueFactory().setValue(config.getMonitoringInterval());
         maxFileCountSpinner.getValueFactory().setValue(config.getMaxFileCount());
-
         enableContentAnalysisCheckBox.setSelected(config.isEnableContentAnalysis());
         enableAIAnalysisCheckBox.setSelected(config.isEnableAIAnalysis());
-        aiApiKeyField.setText(config.getAiApiKey() != null ? config.getAiApiKey() : "");
+
+        if (config.getAiApiKey() != null) {
+            aiApiKeyField.setText(config.getAiApiKey());
+        }
 
         // UI 설정
-        languageComboBox.setValue("ko".equals(config.getLanguage()) ? "한국어" : "English");
-        themeComboBox.setValue("dark".equals(config.getTheme()) ? "어두운 테마" : "밝은 테마");
+        loadLanguageToComboBox(config.getLanguage());
+        loadThemeToComboBox(config.getTheme());
         minimizeToTrayCheckBox.setSelected(config.isMinimizeToTray());
         startWithWindowsCheckBox.setSelected(config.isStartWithWindows());
         debugModeCheckBox.setSelected(config.isDebugMode());
-
-        // 설정 로드 후 UI 상태 업데이트
-        updateUIStatesAfterLoad();
     }
 
     /**
@@ -301,17 +450,44 @@ public class SettingsController implements Initializable {
      */
     @FXML
     private void handleBrowseScanFolder() {
-        DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle("🔍 기본 스캔 폴더 선택");
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("기본 스캔 폴더 선택");
 
-        String currentPath = defaultScanFolderField.getText();
-        if (!currentPath.isEmpty() && new File(currentPath).exists()) {
-            chooser.setInitialDirectory(new File(currentPath));
+        // 현재 설정된 폴더가 있으면 그것을 초기 폴더로 설정
+        String currentPath = defaultScanFolderField.getText().trim();
+        if (!currentPath.isEmpty() && Files.exists(Paths.get(currentPath))) {
+            directoryChooser.setInitialDirectory(new File(currentPath));
+        } else {
+            // 기본값: 사용자 홈/Downloads
+            File defaultDir = new File(System.getProperty("user.home"), "Downloads");
+            if (defaultDir.exists()) {
+                directoryChooser.setInitialDirectory(defaultDir);
+            }
         }
 
-        File selectedDir = chooser.showDialog(getStage());
-        if (selectedDir != null) {
-            defaultScanFolderField.setText(selectedDir.getAbsolutePath());
+        File selectedDirectory = directoryChooser.showDialog(getStage());
+        if (selectedDirectory != null) {
+            defaultScanFolderField.setText(selectedDirectory.getAbsolutePath());
+        }
+    }
+
+    /**
+     * 중복 해결 전략을 콤보박스에 로드
+     */
+    private void loadDuplicateStrategyToComboBox(String strategy) {
+        if (strategy == null) strategy = "ASK_USER";
+
+        switch (strategy) {
+            case "KEEP_NEWEST":
+                duplicateStrategyComboBox.setValue("최신 파일 유지 (KEEP_NEWEST)");
+                break;
+            case "KEEP_LARGEST":
+                duplicateStrategyComboBox.setValue("큰 파일 유지 (KEEP_LARGEST)");
+                break;
+            case "ASK_USER":
+            default:
+                duplicateStrategyComboBox.setValue("사용자 확인 (ASK_USER)");
+                break;
         }
     }
 
@@ -320,17 +496,21 @@ public class SettingsController implements Initializable {
      */
     @FXML
     private void handleBrowseOrganizationFolder() {
-        DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle("📦 정리 폴더 선택");
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("파일 정리 폴더 선택");
 
-        String currentPath = organizationFolderField.getText();
-        if (!currentPath.isEmpty() && new File(currentPath).exists()) {
-            chooser.setInitialDirectory(new File(currentPath));
+        // 현재 설정된 폴더가 있으면 그것을 초기 폴더로 설정
+        String currentPath = organizationFolderField.getText().trim();
+        if (!currentPath.isEmpty() && Files.exists(Paths.get(currentPath))) {
+            directoryChooser.setInitialDirectory(new File(currentPath));
+        } else {
+            // 기본값: 사용자 홈
+            directoryChooser.setInitialDirectory(new File(System.getProperty("user.home")));
         }
 
-        File selectedDir = chooser.showDialog(getStage());
-        if (selectedDir != null) {
-            organizationFolderField.setText(selectedDir.getAbsolutePath());
+        File selectedDirectory = directoryChooser.showDialog(getStage());
+        if (selectedDirectory != null) {
+            organizationFolderField.setText(selectedDirectory.getAbsolutePath());
         }
     }
 
