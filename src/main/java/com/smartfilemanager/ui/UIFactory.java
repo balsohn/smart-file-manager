@@ -222,7 +222,7 @@ public class UIFactory {
         fileTable.getColumns().addAll(nameColumn, typeColumn, sizeColumn, statusColumn, dateColumn);
 
         // 빈 테이블 플레이스홀더
-        Label placeholder = new Label("No files scanned yet.\n\nClick 'Scan Folder' to analyze files in a directory.");
+        Label placeholder = new Label("📁 No files scanned yet.\n\nClick 'Scan Folder' to analyze files in a directory.");
         placeholder.setStyle("-fx-text-fill: #6c757d; -fx-text-alignment: center;");
         fileTable.setPlaceholder(placeholder);
 
@@ -309,24 +309,35 @@ public class UIFactory {
         statusColumn.setPrefWidth(120);
         statusColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getStatus().getDisplayName()));
 
-        // 상태별 색상 표시
         statusColumn.setCellFactory(column -> new TableCell<FileInfo, String>() {
+            // 모든 상태 스타일 클래스 목록을 미리 정의해둡니다.
+            private final String[] statusClasses = {"status-pending", "status-organizing", "status-organized", "status-failed", "status-analyzed", "status-skipped"};
+
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
+
+                // 셀이 재사용될 때를 대비해 이전 스타일을 모두 제거합니다.
+                getStyleClass().removeAll(statusClasses);
+                getStyleClass().remove("status-cell");
+
                 if (empty || item == null) {
                     setText(null);
-                    setStyle("");
                 } else {
+                    // 1. 공통 스타일 클래스를 먼저 추가합니다.
+                    getStyleClass().add("status-cell");
+
                     FileInfo fileInfo = getTableView().getItems().get(getIndex());
                     ProcessingStatus status = fileInfo.getStatus();
 
-                    // 상태 아이콘과 텍스트
+                    // 2. 상태에 맞는 특정 스타일 클래스를 추가합니다.
+                    // 예: status가 ORGANIZED면 "status-organized" 클래스가 추가됩니다.
+                    String statusClassName = "status-" + status.name().toLowerCase();
+                    getStyleClass().add(statusClassName);
+
+                    // 텍스트 설정은 그대로 유지합니다.
                     String statusText = getStatusIcon(status) + " " + status.getDisplayName();
                     setText(statusText);
-
-                    // 색상 적용
-                    setStyle("-fx-text-fill: " + status.getColorCode() + "; -fx-font-weight: bold;");
                 }
             }
         });
@@ -382,7 +393,7 @@ public class UIFactory {
     private static ContextMenu createTableContextMenu(TableView<FileInfo> fileTable) {
         ContextMenu contextMenu = new ContextMenu();
 
-        MenuItem viewDetails = new MenuItem("View Details");
+        MenuItem viewDetails = new MenuItem("🔍 View Details");
         viewDetails.setOnAction(e -> {
             FileInfo selected = fileTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
@@ -390,7 +401,7 @@ public class UIFactory {
             }
         });
 
-        MenuItem openLocation = new MenuItem("Open File Location");
+        MenuItem openLocation = new MenuItem("📂 Open File Location");
         openLocation.setOnAction(e -> {
             FileInfo selected = fileTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
@@ -398,7 +409,7 @@ public class UIFactory {
             }
         });
 
-        MenuItem copyPath = new MenuItem("Copy File Path");
+        MenuItem copyPath = new MenuItem("📋 Copy File Path");
         copyPath.setOnAction(e -> {
             FileInfo selected = fileTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
@@ -430,25 +441,25 @@ public class UIFactory {
     private static String getFileIcon(String category) {
         if (category == null) return "[FILE]";
         switch (category.toLowerCase()) {
-            case "images": return "[IMG]";
-            case "documents": return "[DOC]";
-            case "videos": return "[VID]";
-            case "audio": return "[AUD]";
-            case "archives": return "[ZIP]";
-            default: return "[FILE]";
+            case "images": return "🖼️";
+            case "documents": return "📄";
+            case "videos": return "🎥";
+            case "audio": return "🎵";
+            case "archives": return "📦";
+            default: return "📄";
         }
     }
 
     private static String getStatusIcon(ProcessingStatus status) {
         switch (status) {
-            case PENDING: return "[WAIT]";
-            case SCANNING: return "[SCAN]";
-            case ANALYZED: return "[DONE]";
-            case ORGANIZING: return "[WORK]";
-            case ORGANIZED: return "[OK]";
-            case FAILED: return "[ERR]";
-            case SKIPPED: return "[SKIP]";
-            default: return "[?]";
+            case PENDING: return "⏳";
+            case SCANNING: return "🔍";
+            case ANALYZED: return "✅";
+            case ORGANIZING: return "⚙️";
+            case ORGANIZED: return "🎯";
+            case FAILED: return "❌";
+            case SKIPPED: return "⏭️";
+            default: return "❓";
         }
     }
 
