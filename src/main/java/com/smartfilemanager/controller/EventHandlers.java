@@ -1,10 +1,13 @@
 package com.smartfilemanager.controller;
 
 import com.smartfilemanager.model.FileInfo;
+import com.smartfilemanager.model.DuplicateGroup;
 import com.smartfilemanager.service.FileScanService;
+import com.smartfilemanager.service.DuplicateDetectorService;
 import com.smartfilemanager.ui.FileDetailManager;
 import com.smartfilemanager.ui.UIFactory;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -23,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Event handlers with settings integration
+ * Event handlers with duplicate detection
  */
 public class EventHandlers {
 
@@ -40,10 +43,12 @@ public class EventHandlers {
     // Services
     private FileScanService fileScanService;
     private FileDetailManager fileDetailManager;
+    private DuplicateDetectorService duplicateDetectorService;
 
     public EventHandlers(Stage primaryStage, ObservableList<FileInfo> fileList) {
         this.primaryStage = primaryStage;
         this.fileList = fileList;
+        this.duplicateDetectorService = new DuplicateDetectorService();
     }
 
     /**
@@ -138,20 +143,17 @@ public class EventHandlers {
     }
 
     /**
-     * Settings handler - NEW FEATURE!
+     * Settings handler
      */
     public void handleSettings() {
         System.out.println("[INFO] Settings button clicked");
 
         try {
-            // Load settings FXML
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/settings.fxml"));
             Parent settingsRoot = loader.load();
 
-            // Get controller and set stage
             SettingsController settingsController = loader.getController();
 
-            // Create settings stage
             Stage settingsStage = new Stage();
             settingsStage.setTitle("⚙️ Smart File Manager - 설정");
             settingsStage.setScene(new Scene(settingsRoot, 800, 600));
@@ -161,10 +163,7 @@ public class EventHandlers {
             settingsStage.setMinWidth(700);
             settingsStage.setMinHeight(500);
 
-            // Set controller stage reference
             settingsController.setStage(settingsStage);
-
-            // Show settings window
             settingsStage.showAndWait();
 
             System.out.println("[INFO] Settings window closed");
@@ -313,7 +312,7 @@ public class EventHandlers {
     }
 
     /**
-     * Find duplicates handler
+     * Find duplicates handler - ENHANCED VERSION!
      */
     public void handleFindDuplicates() {
         System.out.println("[INFO] Find duplicates button clicked");
@@ -324,22 +323,107 @@ public class EventHandlers {
             return;
         }
 
-        long duplicateCandidates = fileList.stream()
-                .collect(java.util.stream.Collectors.groupingBy(FileInfo::getFileSize))
-                .values().stream()
-                .filter(group -> group.size() > 1)
-                .mapToLong(java.util.List::size)
+        // 중복 탐지 시작 알림
+        statusLabel.setText("🔍 중복 파일을 분석하고 있습니다...");
+        progressBar.setVisible(true);
+        progressBar.setProgress(-1); // 불확정 진행률
+
+        // 백그라운드에서 중복 파일 탐지 실행
+        Task<List<DuplicateGroup>> duplicateTask = new Task<List<DuplicateGroup>>() {
+            @Override
+            protected List<DuplicateGroup> call() throws Exception {
+                // 현재 파일 목록의 복사본을 만들어서 분석
+                List<FileInfo> filesToAnalyze = new ArrayList<>(fileList);
+                return duplicateDetectorService.findDuplicates(filesToAnalyze);
+            }
+
+            @Override
+            protected void succeeded() {
+                List<DuplicateGroup> duplicateGroups = getValue();
+
+                // UI 업데이트
+                progressBar.setVisible(false);
+                statusLabel.setText("🔍 중복 파일 분석 완료");
+
+                // 결과 표시
+                showDuplicateResults(duplicateGroups);
+            }
+
+            @Override
+            protected void failed() {
+                progressBar.setVisible(false);
+                statusLabel.setText("❌ 중복 파일 분석 실패");
+
+                Throwable exception = getException();
+                UIFactory.showInfoDialog("❌ 분석 실패",
+                        "중복 파일 분석 중 오류가 발생했습니다:\n" + exception.getMessage());
+            }
+        };
+
+        // 백그라운드 스레드에서 실행
+        Thread duplicateThread = new Thread(duplicateTask);
+        duplicateThread.setDaemon(true);
+        duplicateThread.start();
+    }
+
+    /**
+     * Show duplicate detection results
+     */
+    private void showDuplicateResults(List<DuplicateGroup> duplicateGroups) {
+        if (duplicateGroups.isEmpty()) {
+            UIFactory.showInfoDialog("🎉 중복 파일 없음",
+                    "🔍 분석 결과 중복된 파일을 찾지 못했습니다.\n\n" +
+                            "✅ 모든 파일이 고유한 파일입니다!\n" +
+                            "📊 분석된 파일: " + fileList.size() + "개");
+            return;
+        }
+
+        // 통계 계산
+        long exactDuplicates = duplicateGroups.stream()
+                .filter(g -> g.getType() == com.smartfilemanager.model.DuplicateType.EXACT)
+                .count();
+        long similarFiles = duplicateGroups.stream()
+                .filter(g -> g.getType() == com.smartfilemanager.model.DuplicateType.SIMILAR)
+                .count();
+
+        long totalDuplicateFiles = duplicateGroups.stream()
+                .mapToLong(g -> g.getFiles().size())
                 .sum();
 
-        if (duplicateCandidates == 0) {
-            UIFactory.showInfoDialog("🔍 중복 파일 없음",
-                    "파일 크기를 기준으로 중복 가능성이 있는 파일을 찾지 못했습니다.");
-        } else {
-            UIFactory.showInfoDialog("🔄 중복 파일 가능성",
-                    "🔍 동일한 크기의 파일 " + duplicateCandidates + "개를 발견했습니다.\n\n" +
-                            "🚀 고급 중복 탐지 기능은 Phase 6에서 구현될 예정입니다.\n" +
-                            "📊 현재는 파일 크기만으로 중복 가능성을 판단합니다.");
+        long totalSavings = duplicateGroups.stream()
+                .mapToLong(com.smartfilemanager.model.DuplicateGroup::getDuplicateSize)
+                .sum();
+
+        // 결과 메시지 생성
+        StringBuilder message = new StringBuilder();
+        message.append("🔄 중복 파일 분석 결과\n\n");
+
+        message.append("📊 발견된 중복 그룹: ").append(duplicateGroups.size()).append("개\n");
+        message.append("  • 🎯 정확한 중복: ").append(exactDuplicates).append("개 그룹\n");
+        message.append("  • 🔍 유사한 파일: ").append(similarFiles).append("개 그룹\n\n");
+
+        message.append("📁 중복 파일 개수: ").append(totalDuplicateFiles).append("개\n");
+        message.append("💾 절약 가능 용량: ").append(formatFileSize(totalSavings)).append("\n\n");
+
+        message.append("🎯 상위 중복 그룹:\n");
+        duplicateGroups.stream()
+                .sorted((g1, g2) -> Long.compare(g2.getDuplicateSize(), g1.getDuplicateSize()))
+                .limit(5)
+                .forEach(group -> {
+                    message.append("  • ").append(group.getSummary()).append("\n");
+                    if (group.hasRecommendation()) {
+                        message.append("    💡 추천: ").append(group.getRecommendedKeep().getFileName())
+                                .append(" (").append(group.getRecommendationReason()).append(")\n");
+                    }
+                });
+
+        if (duplicateGroups.size() > 5) {
+            message.append("  ... 그 외 ").append(duplicateGroups.size() - 5).append("개 그룹\n");
         }
+
+        message.append("\n🚀 향후 버전에서는 중복 파일 관리 UI가 제공될 예정입니다!");
+
+        UIFactory.showInfoDialog("🔄 중복 파일 발견!", message.toString());
     }
 
     /**
@@ -385,7 +469,8 @@ public class EventHandlers {
         help.append("  • 📊 컬럼 헤더 클릭으로 정렬\n");
         help.append("  • 📄 파일 선택하면 상세 정보 표시\n");
         help.append("  • ⚙️ 설정에서 분류 규칙 커스터마이징\n");
-        help.append("  • ↩️ Ctrl+Z로 정리 작업 되돌리기\n\n");
+        help.append("  • ↩️ Ctrl+Z로 정리 작업 되돌리기\n");
+        help.append("  • 🔄 F7로 중복 파일 찾기\n\n");
 
         help.append("⌨️ 키보드 단축키:\n");
         help.append("  • Ctrl+O: 📁 폴더 열기\n");
@@ -400,6 +485,7 @@ public class EventHandlers {
         help.append("  • 파일이 정리되지 않을 때: 권한 확인\n");
         help.append("  • 스캔이 느릴 때: 설정에서 파일 크기 제한 조정\n");
         help.append("  • 분류가 부정확할 때: 파일명에 키워드 포함\n");
+        help.append("  • 중복 탐지가 느릴 때: 파일 수가 많은 경우 시간이 소요됨\n");
 
         UIFactory.showInfoDialog("📖 도움말", help.toString());
     }
