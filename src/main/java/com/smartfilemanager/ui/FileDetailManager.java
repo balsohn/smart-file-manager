@@ -29,26 +29,26 @@ public class FileDetailManager {
         StringBuilder details = new StringBuilder();
 
         // 기본 정보
-        details.append("📄 ").append(fileInfo.getFileName()).append("\n");
-        details.append("📂 ").append(fileInfo.getDetectedCategory());
+        details.append("[FILE] ").append(fileInfo.getFileName()).append("\n");
+        details.append("[CATEGORY] ").append(fileInfo.getDetectedCategory());
 
         if (fileInfo.getDetectedSubCategory() != null) {
             details.append(" → ").append(fileInfo.getDetectedSubCategory());
         }
         details.append("\n");
 
-        details.append("📏 ").append(fileInfo.getFormattedFileSize()).append("\n");
+        details.append("[SIZE] ").append(fileInfo.getFormattedFileSize()).append("\n");
 
         // 경로 정보 (짧게 표시)
         String path = fileInfo.getFilePath();
         if (path.length() > 50) {
             path = "..." + path.substring(path.length() - 47);
         }
-        details.append("📁 ").append(path);
+        details.append("[PATH] ").append(path);
 
         // 추가 정보가 있다면
         if (fileInfo.getConfidenceScore() > 0) {
-            details.append("\n🎯 Confidence: ").append(String.format("%.0f%%", fileInfo.getConfidenceScore() * 100));
+            details.append("\n[CONFIDENCE] ").append(String.format("%.0f%%", fileInfo.getConfidenceScore() * 100));
         }
 
         detailContent.setText(details.toString());

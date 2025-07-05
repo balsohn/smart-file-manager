@@ -26,26 +26,28 @@
     -fx-text-fill: #495057;
 }
 
-
-
-/*
- * 기본 'status-cell' 스타일입니다.
- * 모든 상태 셀에 공통으로 적용될 폰트와 굵은 글씨를 정의합니다.
- */
-.status-cell .text {
-    -fx-font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Malgun Gothic", sans-serif;
+/* 상태 라벨 스타일 */
+.status-ready {
+    -fx-text-fill: #28a745;
     -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-font-family: "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
 }
 
-/*
- * 이제 각 상태별로 색상을 지정합니다.
- * 셀렉터를 '.status-cell.status-organized' 처럼 붙여 써서
- * "두 클래스를 모두 가진 셀"에만 적용되도록 명확히 합니다.
- */
-.status-cell.status-pending .text { -fx-text-fill: #6c757d; }
-.status-cell.status-organizing .text { -fx-text-fill: #ffc107; }
-.status-cell.status-organized .text { -fx-text-fill: #28a745; }
-.status-cell.status-failed .text { -fx-text-fill: #dc3545; }
-.status-cell.status-analyzed .text { -fx-text-fill: #007bff; }
-.status-cell.status-skipped .text { -fx-text-fill: #17a2b8; }
-/* 나머지 필요한 상태도 같은 형식으로 추가 */
+.status-processing {
+    -fx-text-fill: #007bff;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.status-warning {
+    -fx-text-fill: #ffc107;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.status-error {
+    -fx-text-fill: #dc3545;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
