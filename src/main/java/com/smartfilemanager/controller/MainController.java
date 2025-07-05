@@ -3,7 +3,9 @@ package com.smartfilemanager.controller;
 import com.smartfilemanager.model.FileInfo;
 import com.smartfilemanager.model.ProcessingStatus;
 import com.smartfilemanager.service.*;
+import com.smartfilemanager.ui.AboutDialog;
 import com.smartfilemanager.ui.FileDetailManager;
+import com.smartfilemanager.ui.HelpDialog;
 import com.smartfilemanager.ui.UIFactory;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -372,61 +374,137 @@ public class MainController implements Initializable {
         }
     }
 
+    /**
+     * 정보(About) 창 표시
+     */
     @FXML
     private void handleAbout() {
-        System.out.println("[INFO] 정보 메뉴 클릭");
-
-        StringBuilder about = new StringBuilder();
-        about.append("🗂️ Smart File Manager v1.0\n");
-        about.append("🤖 AI 기반 스마트 파일 정리 도구\n\n");
-
-        about.append("📊 현재 통계:\n");
-        if (!fileList.isEmpty()) {
-            long totalSize = fileList.stream().mapToLong(FileInfo::getFileSize).sum();
-            about.append("  📋 분석된 파일: ").append(fileList.size()).append("개\n");
-            about.append("  📏 총 크기: ").append(formatFileSize(totalSize)).append("\n");
-
-            long organizedCount = fileList.stream().filter(f -> f.getStatus().isCompleted()).count();
-            about.append("  🎯 정리된 파일: ").append(organizedCount).append("개\n");
-        } else {
-            about.append("  📝 아직 분석된 파일이 없습니다\n");
+        System.out.println("[INFO] About 다이얼로그 표시");
+        try {
+            AboutDialog.show(getCurrentStage());
+        } catch (Exception e) {
+            System.err.println("[ERROR] About 다이얼로그 표시 실패: " + e.getMessage());
+            UIFactory.showInfoDialog("❌ 오류", "정보 창을 표시할 수 없습니다.");
         }
-
-        about.append("\n🛠️ JavaFX로 제작\n");
-        about.append("© 2024 Smart File Manager");
-
-        UIFactory.showInfoDialog("ℹ️ Smart File Manager 정보", about.toString());
     }
 
+    /**
+     * 도움말 창 표시
+     */
     @FXML
     private void handleHelpTopics() {
-        System.out.println("[INFO] 도움말 메뉴 클릭");
+        System.out.println("[INFO] 도움말 창 표시");
+        try {
+            HelpDialog.show(getCurrentStage());
+        } catch (Exception e) {
+            System.err.println("[ERROR] 도움말 창 표시 실패: " + e.getMessage());
+            UIFactory.showInfoDialog("❌ 오류", "도움말 창을 표시할 수 없습니다.");
+        }
+    }
 
-        StringBuilder help = new StringBuilder();
-        help.append("📖 Smart File Manager 도움말\n\n");
+    /**
+     * 설정 창 열기
+     */
+    @FXML
+    private void handleSettings() {
+        System.out.println("[INFO] 설정 버튼 클릭됨");
 
-        help.append("🚀 빠른 시작:\n");
-        help.append("  1. 🔍 '스캔' 버튼을 클릭해서 파일 분석\n");
-        help.append("  2. 📋 파일 목록과 카테고리 확인\n");
-        help.append("  3. 📦 '정리' 버튼을 클릭해서 정리\n\n");
+        try {
+            // FXML 파일 로드
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/settings.fxml"));
+            Parent settingsRoot = loader.load();
 
-        help.append("💡 팁:\n");
-        help.append("  • 🖱️ 파일을 클릭하면 상세 정보 표시\n");
-        help.append("  • 📊 컬럼 헤더 클릭으로 정렬\n");
-        help.append("  • ⚙️ 설정에서 분류 규칙 커스터마이징\n");
-        help.append("  • ↩️ Ctrl+Z로 정리 작업 되돌리기\n\n");
+            // 컨트롤러 참조
+            SettingsController settingsController = loader.getController();
 
-        help.append("⌨️ 키보드 단축키:\n");
-        help.append("  • Ctrl+O: 📁 폴더 열기\n");
-        help.append("  • F5: 🔍 파일 스캔\n");
-        help.append("  • F6: 📦 파일 정리\n");
-        help.append("  • F7: 🔄 중복 파일 찾기\n");
-        help.append("  • F8: 🧹 불필요한 파일 정리\n");
-        help.append("  • Ctrl+Z: ↩️ 정리 되돌리기\n");
-        help.append("  • Ctrl+,: ⚙️ 설정 열기\n");
-        help.append("  • Ctrl+Q: 🚪 종료\n");
+            // 설정 창 생성
+            Stage settingsStage = new Stage();
+            settingsStage.setTitle("⚙️ Smart File Manager - 설정");
+            settingsStage.setScene(new Scene(settingsRoot, 800, 600));
+            settingsStage.initModality(Modality.APPLICATION_MODAL);
+            settingsStage.initOwner(getCurrentStage());
+            settingsStage.setResizable(true);
+            settingsStage.setMinWidth(700);
+            settingsStage.setMinHeight(500);
 
-        UIFactory.showInfoDialog("📖 도움말", help.toString());
+            // 컨트롤러에 스테이지 전달
+            settingsController.setStage(settingsStage);
+
+            // 창 표시 (모달)
+            settingsStage.showAndWait();
+
+            System.out.println("[INFO] 설정 창이 닫혔습니다");
+
+        } catch (IOException e) {
+            System.err.println("[ERROR] 설정 창 로드 실패: " + e.getMessage());
+            UIFactory.showInfoDialog("❌ 오류",
+                    "설정 창을 열 수 없습니다:\n" + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("[ERROR] 설정 창에서 예기치 않은 오류: " + e.getMessage());
+            UIFactory.showInfoDialog("❌ 오류",
+                    "설정 창에서 오류가 발생했습니다:\n" + e.getMessage());
+        }
+    }
+
+    /**
+     * 키보드 단축키 F1으로 도움말 열기
+     */
+    private void setupKeyboardShortcuts() {
+        // 씬에 키 이벤트 핸들러 추가
+        Platform.runLater(() -> {
+            if (getCurrentStage() != null && getCurrentStage().getScene() != null) {
+                getCurrentStage().getScene().setOnKeyPressed(event -> {
+                    switch (event.getCode()) {
+                        case F1:
+                            handleHelpTopics();
+                            event.consume();
+                            break;
+                        case F5:
+                            handleScanFiles();
+                            event.consume();
+                            break;
+                        case F6:
+                            handleOrganizeFiles();
+                            event.consume();
+                            break;
+                        case F7:
+                            handleFindDuplicates();
+                            event.consume();
+                            break;
+                        case F8:
+                            handleCleanupFiles();
+                            event.consume();
+                            break;
+                    }
+
+                    // Ctrl 조합 키들
+                    if (event.isControlDown()) {
+                        switch (event.getCode()) {
+                            case O:
+                                handleOpenFolder();
+                                event.consume();
+                                break;
+                            case COMMA:
+                                handleSettings();
+                                event.consume();
+                                break;
+                            case I:
+                                handleAbout();
+                                event.consume();
+                                break;
+                            case Z:
+                                handleUndoOrganization();
+                                event.consume();
+                                break;
+                            case Q:
+                                Platform.exit();
+                                event.consume();
+                                break;
+                        }
+                    }
+                });
+            }
+        });
     }
 
     @FXML
@@ -817,4 +895,5 @@ public class MainController implements Initializable {
     private Stage getCurrentStage() {
         return (Stage) fileTable.getScene().getWindow();
     }
+
 }

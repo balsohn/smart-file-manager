@@ -1,0 +1,378 @@
+/* =========================
+   Smart File Manager
+   Dark Theme Styles
+   ========================= */
+
+/* 전체 애플리케이션 다크 모드 */
+.root {
+    -fx-base: #2b2b2b;
+    -fx-background: #1e1e1e;
+    -fx-control-inner-background: #3c3c3c;
+    -fx-accent: #0078d4;
+    -fx-focus-color: #0078d4;
+    -fx-faint-focus-color: #0078d422;
+    -fx-text-fill: #ffffff;
+    -fx-background-color: #1e1e1e;
+}
+
+/* 메뉴바 다크 스타일 */
+.menu-bar {
+    -fx-background-color: #2d2d30;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 0 0 1 0;
+}
+
+.menu-bar .label {
+    -fx-text-fill: #cccccc;
+}
+
+.menu-bar .menu:hover,
+.menu-bar .menu:focused,
+.menu-bar .menu:showing {
+    -fx-background-color: #3f3f46;
+}
+
+.context-menu {
+    -fx-background-color: #2d2d30;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 1;
+}
+
+.menu-item {
+    -fx-background-color: transparent;
+}
+
+.menu-item:focused,
+.menu-item:hover {
+    -fx-background-color: #094771;
+}
+
+.menu-item .label {
+    -fx-text-fill: #cccccc;
+}
+
+/* 테이블 다크 스타일 */
+.table-view {
+    -fx-background-color: #252526;
+    -fx-border-color: #3c3c3c;
+    -fx-table-cell-border-color: #3c3c3c;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #2d2d30;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 0 1 0 0;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #cccccc;
+    -fx-font-weight: bold;
+}
+
+.table-view .table-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #cccccc;
+    -fx-border-color: #3c3c3c;
+}
+
+.table-view .table-row-cell {
+    -fx-background-color: transparent;
+}
+
+.table-view .table-row-cell:selected {
+    -fx-background-color: #094771;
+    -fx-text-fill: #ffffff;
+}
+
+.table-view .table-row-cell:hover {
+    -fx-background-color: #2a2d2e;
+}
+
+/* 버튼 다크 스타일 */
+.button {
+    -fx-background-color: #0e639c;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #0e639c;
+    -fx-border-width: 1px;
+    -fx-background-radius: 3px;
+    -fx-border-radius: 3px;
+}
+
+.button:hover {
+    -fx-background-color: #1177bb;
+    -fx-border-color: #1177bb;
+}
+
+.button:pressed {
+    -fx-background-color: #094771;
+    -fx-border-color: #094771;
+}
+
+.button:disabled {
+    -fx-background-color: #3c3c3c;
+    -fx-text-fill: #656565;
+    -fx-border-color: #3c3c3c;
+}
+
+/* 주요 버튼들 */
+.scan-button {
+    -fx-background-color: #0078d4;
+    -fx-border-color: #0078d4;
+}
+
+.scan-button:hover {
+    -fx-background-color: #106ebe;
+    -fx-border-color: #106ebe;
+}
+
+.organize-button {
+    -fx-background-color: #107c10;
+    -fx-border-color: #107c10;
+}
+
+.organize-button:hover {
+    -fx-background-color: #0e6e0e;
+    -fx-border-color: #0e6e0e;
+}
+
+.settings-button {
+    -fx-background-color: #5c5c5c;
+    -fx-border-color: #5c5c5c;
+}
+
+.settings-button:hover {
+    -fx-background-color: #6c6c6c;
+    -fx-border-color: #6c6c6c;
+}
+
+/* 라벨 다크 스타일 */
+.label {
+    -fx-text-fill: #cccccc;
+}
+
+.title-label {
+    -fx-text-fill: #ffffff;
+}
+
+.subtitle-label {
+    -fx-text-fill: #969696;
+}
+
+.section-title {
+    -fx-text-fill: #ffffff;
+}
+
+.stats-label,
+.statistics-label {
+    -fx-text-fill: #969696;
+}
+
+/* 상태 라벨들 */
+.status-ready {
+    -fx-text-fill: #4ec9b0;
+}
+
+.status-scanning {
+    -fx-text-fill: #569cd6;
+}
+
+.status-organizing {
+    -fx-text-fill: #dcdcaa;
+}
+
+.status-complete {
+    -fx-text-fill: #4ec9b0;
+}
+
+.status-error {
+    -fx-text-fill: #f44747;
+}
+
+/* 진행률 바 다크 스타일 */
+.progress-bar {
+    -fx-background-color: #3c3c3c;
+    -fx-border-color: #2d2d30;
+    -fx-border-width: 1px;
+    -fx-background-radius: 3px;
+    -fx-border-radius: 3px;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #0078d4;
+    -fx-background-radius: 2px;
+    -fx-background-insets: 0;
+}
+
+.progress-bar .track {
+    -fx-background-color: #3c3c3c;
+    -fx-background-radius: 2px;
+    -fx-background-insets: 0;
+}
+
+/* 입력 필드 다크 스타일 */
+.text-field,
+.text-area {
+    -fx-background-color: #3c3c3c;
+    -fx-text-fill: #cccccc;
+    -fx-border-color: #464647;
+    -fx-border-width: 1px;
+    -fx-background-radius: 3px;
+    -fx-border-radius: 3px;
+}
+
+.text-field:focused,
+.text-area:focused {
+    -fx-border-color: #0078d4;
+    -fx-border-width: 2px;
+}
+
+/* 체크박스 다크 스타일 */
+.check-box {
+    -fx-text-fill: #cccccc;
+}
+
+.check-box .box {
+    -fx-background-color: #3c3c3c;
+    -fx-border-color: #464647;
+    -fx-border-width: 1px;
+    -fx-background-radius: 2px;
+    -fx-border-radius: 2px;
+}
+
+.check-box:selected .mark {
+    -fx-background-color: #ffffff;
+}
+
+.check-box:selected .box {
+    -fx-background-color: #0078d4;
+    -fx-border-color: #0078d4;
+}
+
+/* 콤보박스 다크 스타일 */
+.combo-box {
+    -fx-background-color: #3c3c3c;
+    -fx-border-color: #464647;
+    -fx-border-width: 1px;
+    -fx-background-radius: 3px;
+    -fx-border-radius: 3px;
+}
+
+.combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #cccccc;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #2d2d30;
+    -fx-border-color: #464647;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #094771;
+}
+
+.combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: #0078d4;
+    -fx-text-fill: #ffffff;
+}
+
+/* 스피너 다크 스타일 */
+.spinner {
+    -fx-background-color: #3c3c3c;
+    -fx-border-color: #464647;
+    -fx-border-width: 1px;
+    -fx-background-radius: 3px;
+    -fx-border-radius: 3px;
+}
+
+.spinner .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+/* 탭 패널 다크 스타일 */
+.tab-pane {
+    -fx-background-color: #2d2d30;
+}
+
+.tab-pane .tab-header-area {
+    -fx-background-color: #2d2d30;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 0 0 1 0;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #2d2d30;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 0 1 0 0;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #094771;
+}
+
+.tab-pane .tab .tab-label {
+    -fx-text-fill: #cccccc;
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #ffffff;
+}
+
+.tab-pane .tab-content-area {
+    -fx-background-color: #252526;
+}
+
+/* 스크롤바 다크 스타일 */
+.scroll-bar {
+    -fx-background-color: #2d2d30;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #464647;
+    -fx-background-radius: 5px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #5a5a5a;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #2d2d30;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: #2d2d30;
+}
+
+/* 파일 상세 정보 패널 */
+.detail-panel {
+    -fx-background-color: #252526;
+    -fx-border-color: #3c3c3c;
+}
+
+.detail-title {
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+}
+
+.detail-content {
+    -fx-text-fill: #cccccc;
+}
+
+/* 툴팁 다크 스타일 */
+.tooltip {
+    -fx-background-color: #2d2d30;
+    -fx-text-fill: #cccccc;
+    -fx-border-color: #464647;
+    -fx-border-width: 1px;
+    -fx-background-radius: 3px;
+    -fx-border-radius: 3px;
+}
