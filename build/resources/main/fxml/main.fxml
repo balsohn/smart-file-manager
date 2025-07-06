@@ -5,185 +5,207 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.smartfilemanager.controller.MainController">
+<VBox xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.smartfilemanager.controller.MainController">
 
-    <!-- 상단: 메뉴바 -->
-    <top>
-        <MenuBar>
-            <menus>
-                <!-- 파일 메뉴 -->
-                <Menu text="📁 파일">
-                    <items>
-                        <MenuItem fx:id="openFolderMenuItem" text="📂 폴더 열기..." onAction="#handleOpenFolder" />
-                        <SeparatorMenuItem />
-                        <MenuItem fx:id="settingsMenuItem" text="⚙️ 설정" onAction="#handleSettings" />
-                        <SeparatorMenuItem />
-                        <MenuItem fx:id="exitMenuItem" text="🚪 종료" onAction="#handleExit" />
-                    </items>
-                </Menu>
+    <!-- 메뉴바 -->
+    <MenuBar>
+        <Menu text="파일">
+            <MenuItem text="📂 폴더 스캔" onAction="#handleScanFiles" accelerator="Ctrl+O"/>
+            <MenuItem text="📊 정리하기" onAction="#handleOrganizeFiles" accelerator="Ctrl+R"/>
+            <SeparatorMenuItem />
+            <MenuItem text="📋 통계 보기" onAction="#handleStatistics" accelerator="F6"/>
+            <MenuItem text="📈 AI 분석 요약" onAction="#handleShowAISummary" accelerator="F7"/>
+            <SeparatorMenuItem />
+            <MenuItem text="❌ 종료" onAction="#handleExit" accelerator="Ctrl+Q"/>
+        </Menu>
+        <Menu text="도구">
+            <MenuItem text="🔍 중복 파일 찾기" onAction="#handleFindDuplicates"/>
+            <MenuItem text="🧹 불필요한 파일 정리" onAction="#handleCleanupFiles"/>
+            <MenuItem fx:id="batchAIAnalysisMenuItem" text="🤖 AI 배치 분석" onAction="#handleBatchAIAnalysis"/>
+            <SeparatorMenuItem />
+            <CheckMenuItem fx:id="realTimeMonitoringMenuItem" text="⚡ 실시간 모니터링" onAction="#handleMonitoringToggle"/>
+        </Menu>
+        <Menu text="설정">
+            <MenuItem text="⚙️ 설정" onAction="#handleSettings" accelerator="F2"/>
+            <MenuItem text="🎨 테마 변경" onAction="#handleThemeToggle"/>
+        </Menu>
+        <Menu text="도움말">
+            <MenuItem text="📖 사용법" onAction="#handleHelpTopics" accelerator="F1"/>
+            <MenuItem text="ℹ️ 정보" onAction="#handleAbout"/>
+        </Menu>
+    </MenuBar>
 
-                <!-- 도구 메뉴 -->
-                <Menu text="🔧 도구">
-                    <items>
-                        <MenuItem fx:id="scanMenuItem" text="🔍 파일 스캔" onAction="#handleScanFiles" />
-                        <MenuItem fx:id="organizeMenuItem" text="📦 파일 정리" onAction="#handleOrganizeFiles" />
-                        <MenuItem fx:id="undoMenuItem" text="↩️ 정리 되돌리기" onAction="#handleUndoOrganization" />
-                        <SeparatorMenuItem />
-                        <MenuItem fx:id="duplicatesMenuItem" text="🔄 중복 파일 찾기" onAction="#handleFindDuplicates" />
-                        <MenuItem fx:id="cleanupMenuItem" text="🧹 불필요한 파일 정리" onAction="#handleCleanupFiles" />
-                    </items>
-                </Menu>
+    <!-- 메인 컨텐츠 -->
+    <VBox spacing="20.0" VBox.vgrow="ALWAYS">
+        <padding>
+            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+        </padding>
 
-                <!-- 도움말 메뉴 -->
-                <Menu text="❓ 도움말">
-                    <items>
-                        <MenuItem fx:id="helpTopicsMenuItem" text="📖 도움말" onAction="#handleHelpTopics" />
-                        <SeparatorMenuItem />
-                        <MenuItem fx:id="aboutMenuItem" text="ℹ️ 정보" onAction="#handleAbout" />
-                    </items>
-                </Menu>
-            </menus>
-        </MenuBar>
-    </top>
+        <!-- 헤더 섹션 -->
+        <VBox spacing="10.0" alignment="CENTER">
+            <Label text="📁📄 Smart File Manager" styleClass="main-title">
+                <font>
+                    <Font name="System Bold" size="24.0" />
+                </font>
+            </Label>
+            <Label text="AI 기반 스마트 파일 정리 도구" styleClass="subtitle">
+                <font>
+                    <Font size="14.0" />
+                </font>
+            </Label>
 
-    <!-- 중앙: 메인 컨텐츠 -->
-    <center>
-        <VBox spacing="20.0" style="-fx-background-color: #f8f9fa;">
-            <padding>
-                <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
-            </padding>
+            <!-- 상태 표시 영역 -->
+            <HBox spacing="15.0" alignment="CENTER">
+                <Label fx:id="aiStatusIndicator" text="AI 비활성" styleClass="status-indicator"/>
+                <Separator orientation="VERTICAL"/>
+                <Label fx:id="monitoringStatusLabel" text="모니터링 대기" styleClass="status-indicator"/>
+            </HBox>
+        </VBox>
 
-            <!-- 제목 섹션 -->
-            <VBox alignment="CENTER" spacing="10.0">
-                <children>
-                    <Label text="🗂️ Smart File Manager" styleClass="title-label">
-                        <font>
-                            <Font name="System Bold" size="28.0" />
-                        </font>
-                    </Label>
-                    <Label text="AI 기반 스마트 파일 정리 도구" styleClass="subtitle-label">
-                        <font>
-                            <Font size="16.0" />
-                        </font>
-                    </Label>
-                </children>
-            </VBox>
+        <!-- 메인 버튼 섹션 -->
+        <HBox spacing="15.0" alignment="CENTER">
+            <Button fx:id="scanButton" text="🔍 스캔" onAction="#handleScanFiles"
+                    prefWidth="120.0" prefHeight="40.0" styleClass="scan-button">
+                <font>
+                    <Font name="System Bold" size="14.0" />
+                </font>
+            </Button>
+            <Button fx:id="organizeButton" text="📂 정리" onAction="#handleOrganizeFiles"
+                    prefWidth="120.0" prefHeight="40.0" styleClass="organize-button" disable="true">
+                <font>
+                    <Font name="System Bold" size="14.0" />
+                </font>
+            </Button>
+            <Button fx:id="settingsButton" text="⚙️ 설정" onAction="#handleSettings"
+                    prefWidth="120.0" prefHeight="40.0" styleClass="settings-button">
+                <font>
+                    <Font name="System Bold" size="14.0" />
+                </font>
+            </Button>
+        </HBox>
 
-            <!-- 버튼 섹션 -->
-            <HBox alignment="CENTER" spacing="15.0">
-                <padding>
-                    <Insets bottom="20.0" top="20.0" />
-                </padding>
-                <children>
-                    <Button fx:id="scanButton" text="🔍 스캔" onAction="#handleScanFiles" prefWidth="120.0" prefHeight="40.0" styleClass="scan-button">
-                        <font>
-                            <Font name="System Bold" size="14.0" />
-                        </font>
-                    </Button>
-                    <Button fx:id="organizeButton" text="📦 정리" onAction="#handleOrganizeFiles" prefWidth="120.0" prefHeight="40.0" styleClass="organize-button" disable="true">
-                        <font>
-                            <Font name="System Bold" size="14.0" />
-                        </font>
-                    </Button>
-                    <Button fx:id="settingsButton" text="⚙️ 설정" onAction="#handleSettings" prefWidth="120.0" prefHeight="40.0" styleClass="settings-button">
-                        <font>
-                            <Font name="System Bold" size="14.0" />
-                        </font>
-                    </Button>
-                </children>
+        <!-- AI 및 모니터링 컨트롤 영역 -->
+        <HBox spacing="15.0" alignment="CENTER">
+            <Button fx:id="aiAnalysisButton" text="🤖 AI 분석" onAction="#handleBatchAIAnalysis"
+                    prefWidth="120.0" prefHeight="35.0" styleClass="ai-button">
+                <font>
+                    <Font size="12.0" />
+                </font>
+            </Button>
+            <Button fx:id="monitoringToggleButton" text="⚡ 모니터링 시작" onAction="#handleMonitoringToggle"
+                    prefWidth="140.0" prefHeight="35.0" styleClass="monitoring-button">
+                <font>
+                    <Font size="12.0" />
+                </font>
+            </Button>
+            <Button text="📊 통계" onAction="#handleStatistics"
+                    prefWidth="100.0" prefHeight="35.0" styleClass="stats-button">
+                <font>
+                    <Font size="12.0" />
+                </font>
+            </Button>
+        </HBox>
+
+        <!-- 현재 작업 정보 -->
+        <VBox spacing="5.0">
+            <HBox spacing="10.0" alignment="CENTER_LEFT">
+                <Label text="📋 파일 목록" styleClass="section-title">
+                    <font>
+                        <Font name="System Bold" size="16.0" />
+                    </font>
+                </Label>
+                <Label fx:id="statsLabel" text="0 files" styleClass="stats-label">
+                    <font>
+                        <Font size="12.0" />
+                    </font>
+                </Label>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="currentFileLabel" text="" styleClass="current-file-label">
+                    <font>
+                        <Font size="11.0" />
+                    </font>
+                </Label>
             </HBox>
 
-            <!-- 파일 테이블 섹션 -->
-            <VBox spacing="10.0" VBox.vgrow="ALWAYS">
-                <children>
-                    <!-- 테이블 헤더 -->
-                    <HBox alignment="CENTER_LEFT" spacing="20.0">
-                        <children>
-                            <Label text="📋 파일 목록" styleClass="section-title">
-                                <font>
-                                    <Font name="System Bold" size="16.0" />
-                                </font>
-                            </Label>
-                            <Label fx:id="statsLabel" text="0 files" styleClass="stats-label">
-                                <font>
-                                    <Font size="12.0" />
-                                </font>
-                            </Label>
-                        </children>
-                    </HBox>
+            <!-- 모니터링 폴더 정보 -->
+            <HBox spacing="10.0" alignment="CENTER_LEFT" fx:id="monitoringInfoBox" visible="false" managed="false">
+                <Label text="📁 모니터링 폴더:"/>
+                <Label fx:id="monitoringFolderLabel" text="" styleClass="folder-path-label">
+                    <font>
+                        <Font size="11.0" />
+                    </font>
+                </Label>
+            </HBox>
+        </VBox>
 
-                    <!-- 파일 테이블 -->
-                    <TableView fx:id="fileTable" prefHeight="300.0" VBox.vgrow="ALWAYS">
-                        <columns>
-                            <TableColumn fx:id="nameColumn" text="📄 파일명" prefWidth="250.0" />
-                            <TableColumn fx:id="categoryColumn" text="📂 카테고리" prefWidth="150.0" />
-                            <TableColumn fx:id="sizeColumn" text="📏 크기" prefWidth="100.0" />
-                            <TableColumn fx:id="statusColumn" text="📊 상태" prefWidth="120.0" />
-                            <TableColumn fx:id="dateColumn" text="📅 수정일" prefWidth="140.0" />
-                        </columns>
-                        <placeholder>
-                            <Label text="아직 스캔된 파일이 없습니다.&#10;&#10;'스캔' 버튼을 클릭해서 폴더를 분석하세요." style="-fx-text-fill: #6c757d; -fx-text-alignment: center;" />
-                        </placeholder>
-                    </TableView>
+        <!-- 파일 테이블 -->
+        <TableView fx:id="fileTable" prefHeight="300.0" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="nameColumn" text="📄 파일명" prefWidth="280.0" minWidth="200.0"/>
+                <TableColumn fx:id="categoryColumn" text="📂 카테고리" prefWidth="140.0" minWidth="100.0"/>
+                <TableColumn fx:id="sizeColumn" text="📏 크기" prefWidth="90.0" minWidth="80.0"/>
+                <TableColumn fx:id="statusColumn" text="📊 상태" prefWidth="110.0" minWidth="100.0"/>
+                <TableColumn fx:id="confidenceColumn" text="🤖 신뢰도" prefWidth="90.0" minWidth="80.0"/>
+                <TableColumn fx:id="dateColumn" text="📅 수정일" prefWidth="130.0" minWidth="120.0"/>
+            </columns>
+            <placeholder>
+                <Label text="아직 스캔된 파일이 없습니다.&#10;&#10;'스캔' 버튼을 클릭해서 폴더를 분석하세요."
+                       style="-fx-text-fill: #6c757d; -fx-font-size: 14px;"/>
+            </placeholder>
+        </TableView>
 
-                    <!-- 파일 상세 정보 패널 -->
-                    <VBox fx:id="fileDetailPanel" spacing="5.0" style="-fx-background-color: #f8f9fa; -fx-border-color: #dee2e6; -fx-border-width: 1px;" maxHeight="100.0" visible="false" managed="false">
-                        <padding>
-                            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-                        </padding>
-                        <children>
-                            <Label text="📄 파일 상세 정보" styleClass="detail-title">
-                                <font>
-                                    <Font name="System Bold" size="12.0" />
-                                </font>
-                            </Label>
-                            <Label fx:id="detailContent" text="파일을 선택하면 상세 정보가 표시됩니다" styleClass="detail-content" wrapText="true">
-                                <font>
-                                    <Font size="11.0" />
-                                </font>
-                            </Label>
-                        </children>
-                    </VBox>
-                </children>
+        <!-- 하단 정보 및 진행률 영역 -->
+        <VBox spacing="10.0">
+
+            <!-- 진행률 바 -->
+            <VBox spacing="5.0">
+                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                    <Label fx:id="statusLabel" text="준비됨" styleClass="status-label">
+                        <font>
+                            <Font name="System Bold" size="12.0" />
+                        </font>
+                    </Label>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="progressLabel" text="" styleClass="progress-label">
+                        <font>
+                            <Font size="11.0" />
+                        </font>
+                    </Label>
+                </HBox>
+                <ProgressBar fx:id="progressBar" prefWidth="Infinity" prefHeight="8.0" progress="0.0"/>
             </VBox>
-        </VBox>
-    </center>
 
-    <!-- 하단: 상태바 -->
-    <bottom>
-        <VBox spacing="5.0" style="-fx-background-color: #e9ecef; -fx-border-color: #dee2e6; -fx-border-width: 1px 0 0 0;">
-            <padding>
-                <Insets bottom="10.0" left="15.0" right="15.0" top="10.0" />
-            </padding>
-            <children>
-                <!-- 상태 정보 -->
-                <HBox alignment="CENTER_LEFT" spacing="15.0">
-                    <children>
-                        <Label fx:id="statusLabel" text="✅ 애플리케이션 준비됨" styleClass="status-ready" prefWidth="300.0" maxWidth="300.0">
-                            <font>
-                                <Font name="System Bold" size="14.0" />
-                            </font>
-                        </Label>
-                        <ProgressBar fx:id="progressBar" prefWidth="200.0" prefHeight="20.0" visible="false" />
-                        <Label fx:id="progressLabel" text="" styleClass="progress-label" visible="false">
-                            <font>
-                                <Font size="12.0" />
-                            </font>
-                        </Label>
-                    </children>
-                </HBox>
-
-                <!-- 추가 통계 정보 -->
-                <HBox alignment="CENTER_LEFT" spacing="15.0">
-                    <children>
-                        <Label fx:id="statisticsLabel" text="분석된 파일: 0개 | 정리된 파일: 0개 | 절약된 공간: 0 B" styleClass="statistics-label">
-                            <font>
-                                <Font size="11.0" />
-                            </font>
-                        </Label>
-                    </children>
-                </HBox>
-            </children>
+            <!-- 통계 정보 -->
+            <HBox spacing="20.0" alignment="CENTER_LEFT">
+                <Label fx:id="statisticsLabel" text="분석된 파일: 0개 | 정리된 파일: 0개 | 총 크기: 0 B"
+                       styleClass="statistics-label">
+                    <font>
+                        <Font size="11.0" />
+                    </font>
+                </Label>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="Smart File Manager v1.0" styleClass="version-label">
+                    <font>
+                        <Font size="10.0" />
+                    </font>
+                </Label>
+            </HBox>
         </VBox>
-    </bottom>
-</BorderPane>
+
+        <!-- 파일 상세 정보 패널 (접을 수 있는) -->
+        <TitledPane fx:id="detailTitledPane" text="📋 파일 상세 정보" expanded="false" animated="true">
+            <VBox fx:id="fileDetailPanel" spacing="5.0">
+                <padding>
+                    <Insets top="10.0" bottom="10.0" left="10.0" right="10.0"/>
+                </padding>
+                <Label fx:id="detailContent" text="파일을 선택하면 상세 정보가 표시됩니다."
+                       wrapText="true" styleClass="detail-content">
+                    <font>
+                        <Font size="12.0" />
+                    </font>
+                </Label>
+            </VBox>
+        </TitledPane>
+    </VBox>
+</VBox>

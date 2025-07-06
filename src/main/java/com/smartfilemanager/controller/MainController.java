@@ -25,6 +25,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
@@ -49,7 +50,9 @@ import static com.smartfilemanager.ui.UIFactory.showInfoDialog;
  */
 public class MainController implements Initializable {
 
-    // FXML UI 컴포넌트들
+    // ===========================================
+    // 기본 FXML 컴포넌트 (FXML에 존재하는 것들)
+    // ===========================================
     @FXML private TableView<FileInfo> fileTable;
     @FXML private TableColumn<FileInfo, String> nameColumn;
     @FXML private TableColumn<FileInfo, String> categoryColumn;
@@ -70,6 +73,9 @@ public class MainController implements Initializable {
     @FXML private VBox fileDetailPanel;
     @FXML private Label detailContent;
 
+    // ===========================================
+    // AI/모니터링 관련 필드들 (null 체크 필요)
+    // ===========================================
     @FXML private Label aiStatusIndicator;
     @FXML private Label currentFileLabel;
     @FXML private TableColumn<FileInfo, Double> confidenceColumn;
@@ -79,6 +85,10 @@ public class MainController implements Initializable {
     @FXML private Button monitoringToggleButton;
     @FXML private Label monitoringStatusLabel;
     @FXML private Label monitoringFolderLabel;
+
+    @FXML private HBox monitoringInfoBox;
+    @FXML private CheckMenuItem realTimeMonitoringMenuItem;
+    @FXML private TitledPane detailTitledPane;
 
     // 서비스들
     private FileScanService fileScanService;
@@ -142,6 +152,9 @@ public class MainController implements Initializable {
         initializeAIAnalysis();
     }
 
+    /**
+     * 파일 감시 서비스 초기화
+     */
     private void initializeFileWatcher() {
         fileWatcherService = new FileWatcherService();
 
@@ -152,88 +165,318 @@ public class MainController implements Initializable {
 
         // UI 초기 상태 설정
         updateMonitoringUI();
+
+        System.out.println("[INFO] FileWatcher 서비스 초기화 완료");
     }
 
     /**
-     * 테이블 설정
+     * AI 상태 표시기 업데이트
+     */
+    private void updateAIStatusIndicator() {
+        if (aiStatusIndicator == null) return;
+
+        try {
+            boolean aiAvailable = fileAnalysisService.isAIAnalysisAvailable();
+
+            Platform.runLater(() -> {
+                if (aiAvailable) {
+                    aiStatusIndicator.setText("🤖 AI 활성");
+                    aiStatusIndicator.getStyleClass().removeAll("status-inactive", "status-error");
+                    aiStatusIndicator.getStyleClass().add("status-active");
+                } else {
+                    aiStatusIndicator.setText("AI 비활성");
+                    aiStatusIndicator.getStyleClass().removeAll("status-active", "status-error");
+                    aiStatusIndicator.getStyleClass().add("status-inactive");
+                }
+            });
+        } catch (Exception e) {
+            Platform.runLater(() -> {
+                aiStatusIndicator.setText("AI 오류");
+                aiStatusIndicator.getStyleClass().removeAll("status-active", "status-inactive");
+                aiStatusIndicator.getStyleClass().add("status-error");
+            });
+            System.err.println("[WARNING] AI 상태 업데이트 오류: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 테이블 설정 (신뢰도 컬럼 포함 완전 버전)
      */
     private void setupTable() {
-        // 컬럼 셀 값 팩토리 설정
-        nameColumn.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFileName()));
+        System.out.println("[DEBUG] 테이블 설정 시작 (AI 컬럼 포함)");
 
+        // 컬럼 너비 설정
+        nameColumn.setPrefWidth(280);
+        nameColumn.setMinWidth(200);
+        categoryColumn.setPrefWidth(140);
+        categoryColumn.setMinWidth(100);
+        sizeColumn.setPrefWidth(90);
+        sizeColumn.setMinWidth(80);
+        statusColumn.setPrefWidth(110);
+        statusColumn.setMinWidth(100);
+        confidenceColumn.setPrefWidth(90);
+        confidenceColumn.setMinWidth(80);
+        dateColumn.setPrefWidth(130);
+        dateColumn.setMinWidth(120);
+
+        // 테이블 크기 조정 정책
+        fileTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        // 기본 컬럼들 셀 팩토리 설정
+        setupBasicCellFactories();
+
+        // 신뢰도 컬럼 설정
+        setupConfidenceColumn();
+
+        // 셀 렌더링 설정
+        setupCellRendering();
+
+        // 데이터 바인딩
+        fileTable.setItems(fileList);
+
+        // 기본 정렬
+        fileTable.getSortOrder().add(nameColumn);
+
+        System.out.println("[SUCCESS] 테이블 설정 완료 (AI 컬럼 포함)");
+    }
+
+    /**
+     * 기본 컬럼들의 셀 팩토리 설정
+     */
+    private void setupBasicCellFactories() {
+        // 파일명 컬럼
+        nameColumn.setCellValueFactory(cellData -> {
+            FileInfo fileInfo = cellData.getValue();
+            String fileName = fileInfo != null && fileInfo.getFileName() != null ?
+                    fileInfo.getFileName() : "알 수 없는 파일";
+            return new javafx.beans.property.SimpleStringProperty(fileName);
+        });
+
+        // 카테고리 컬럼
         categoryColumn.setCellValueFactory(cellData -> {
             FileInfo fileInfo = cellData.getValue();
-            String category = fileInfo.getDetectedCategory() != null ? fileInfo.getDetectedCategory() : "Unknown";
+            if (fileInfo == null) {
+                return new javafx.beans.property.SimpleStringProperty("Unknown");
+            }
+
+            String category = fileInfo.getDetectedCategory() != null ?
+                    fileInfo.getDetectedCategory() : "Unknown";
             String subCategory = fileInfo.getDetectedSubCategory();
 
-            if (subCategory != null && !subCategory.equals("General")) {
+            if (subCategory != null && !subCategory.isEmpty() && !subCategory.equals("General")) {
                 return new javafx.beans.property.SimpleStringProperty(category + "/" + subCategory);
             } else {
                 return new javafx.beans.property.SimpleStringProperty(category);
             }
         });
 
-        sizeColumn.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFormattedFileSize()));
+        // 크기 컬럼
+        sizeColumn.setCellValueFactory(cellData -> {
+            FileInfo fileInfo = cellData.getValue();
+            if (fileInfo == null) {
+                return new javafx.beans.property.SimpleStringProperty("-");
+            }
 
-        statusColumn.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getStatus().getDisplayName()));
+            long size = fileInfo.getFileSize();
+            String sizeStr = formatFileSize(size);
+            return new javafx.beans.property.SimpleStringProperty(sizeStr);
+        });
 
+        // 상태 컬럼
+        statusColumn.setCellValueFactory(cellData -> {
+            FileInfo fileInfo = cellData.getValue();
+            if (fileInfo == null || fileInfo.getStatus() == null) {
+                return new javafx.beans.property.SimpleStringProperty("대기중");
+            }
+
+            ProcessingStatus status = fileInfo.getStatus();
+            return new javafx.beans.property.SimpleStringProperty(status.getDisplayName());
+        });
+
+        // 날짜 컬럼
         dateColumn.setCellValueFactory(cellData -> {
-            if (cellData.getValue().getModifiedDate() != null) {
-                String formattedDate = cellData.getValue().getModifiedDate()
-                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            FileInfo fileInfo = cellData.getValue();
+            if (fileInfo == null || fileInfo.getModifiedDate() == null) {
+                return new javafx.beans.property.SimpleStringProperty("-");
+            }
+
+            try {
+                String formattedDate = fileInfo.getModifiedDate()
+                        .format(DateTimeFormatter.ofPattern("MM-dd HH:mm"));
                 return new javafx.beans.property.SimpleStringProperty(formattedDate);
-            }
-            return new javafx.beans.property.SimpleStringProperty("-");
-        });
-
-        // 상태 컬럼 색상 설정
-        statusColumn.setCellFactory(column -> new TableCell<FileInfo, String>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    FileInfo fileInfo = getTableView().getItems().get(getIndex());
-                    ProcessingStatus status = fileInfo.getStatus();
-
-                    setText(getStatusIcon(status) + " " + status.getDisplayName());
-                    setStyle("-fx-text-fill: " + status.getColorCode() + "; -fx-font-weight: bold;");
-                }
+            } catch (Exception e) {
+                return new javafx.beans.property.SimpleStringProperty("-");
             }
         });
+    }
 
-        // 파일명 컬럼에 아이콘 추가
+    /**
+     * 셀 렌더링 설정 (아이콘 및 색상)
+     */
+    private void setupCellRendering() {
+        // 파일명에 아이콘 추가
         nameColumn.setCellFactory(column -> new TableCell<FileInfo, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
+
                 if (empty || item == null) {
                     setText(null);
-                } else {
-                    FileInfo fileInfo = getTableView().getItems().get(getIndex());
-                    String icon = getFileIcon(fileInfo.getDetectedCategory());
-                    setText(icon + " " + item);
+                    return;
+                }
+
+                try {
+                    int index = getIndex();
+                    if (index >= 0 && index < getTableView().getItems().size()) {
+                        FileInfo fileInfo = getTableView().getItems().get(index);
+                        if (fileInfo != null) {
+                            String category = fileInfo.getDetectedCategory();
+                            String icon = getFileIcon(category);
+                            setText(icon + " " + item);
+                            return;
+                        }
+                    }
+                    setText(item);
+                } catch (Exception e) {
+                    setText(item);
+                    System.err.println("[WARNING] 파일명 렌더링 오류: " + e.getMessage());
                 }
             }
         });
 
-        // 데이터 바인딩
-        fileTable.setItems(fileList);
+        // 상태에 아이콘과 색상 추가
+        statusColumn.setCellFactory(column -> new TableCell<FileInfo, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
 
-        // 정렬 가능하게 설정
-        nameColumn.setSortable(true);
-        categoryColumn.setSortable(true);
-        sizeColumn.setSortable(true);
-        statusColumn.setSortable(true);
-        dateColumn.setSortable(true);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
 
-        // 기본 정렬: 파일명 오름차순
-        fileTable.getSortOrder().add(nameColumn);
+                try {
+                    int index = getIndex();
+                    if (index >= 0 && index < getTableView().getItems().size()) {
+                        FileInfo fileInfo = getTableView().getItems().get(index);
+                        if (fileInfo != null && fileInfo.getStatus() != null) {
+                            ProcessingStatus status = fileInfo.getStatus();
+                            String icon = getStatusIcon(status);
+                            String color = getStatusColor(status);
+
+                            setText(icon + " " + item);
+                            setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold;");
+                            return;
+                        }
+                    }
+                    setText(item);
+                    setStyle("");
+                } catch (Exception e) {
+                    setText(item);
+                    setStyle("");
+                    System.err.println("[WARNING] 상태 렌더링 오류: " + e.getMessage());
+                }
+            }
+        });
+
+        // 카테고리 컬럼에 색상 추가
+        categoryColumn.setCellFactory(column -> new TableCell<FileInfo, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
+
+                setText(item);
+
+                // 카테고리별 색상 적용
+                String color = getCategoryColor(item);
+                setStyle("-fx-text-fill: " + color + ";");
+            }
+        });
+    }
+
+    /**
+     * 카테고리별 색상 반환
+     */
+    private String getCategoryColor(String category) {
+        if (category == null) return "#6c757d";
+
+        String lowerCategory = category.toLowerCase();
+        if (lowerCategory.contains("documents")) return "#007bff";
+        if (lowerCategory.contains("images")) return "#28a745";
+        if (lowerCategory.contains("videos")) return "#dc3545";
+        if (lowerCategory.contains("audio")) return "#6f42c1";
+        if (lowerCategory.contains("archives")) return "#fd7e14";
+        if (lowerCategory.contains("applications")) return "#20c997";
+        if (lowerCategory.contains("spreadsheets")) return "#ffc107";
+
+        return "#6c757d"; // 기본 색상
+    }
+
+    /**
+     * 신뢰도 컬럼 설정
+     */
+    private void setupConfidenceColumn() {
+        confidenceColumn.setCellValueFactory(cellData -> {
+            FileInfo fileInfo = cellData.getValue();
+            if (fileInfo == null) {
+                return new javafx.beans.property.SimpleObjectProperty<>(0.0);
+            }
+            return new javafx.beans.property.SimpleObjectProperty<>(fileInfo.getConfidenceScore());
+        });
+
+        confidenceColumn.setCellFactory(column -> new TableCell<FileInfo, Double>() {
+            @Override
+            protected void updateItem(Double confidence, boolean empty) {
+                super.updateItem(confidence, empty);
+
+                if (empty || confidence == null) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
+
+                try {
+                    int index = getIndex();
+                    if (index >= 0 && index < getTableView().getItems().size()) {
+                        FileInfo fileInfo = getTableView().getItems().get(index);
+                        if (fileInfo != null) {
+                            // 신뢰도 백분율로 표시
+                            String confidenceText = String.format("%.0f%%", confidence * 100);
+
+                            // AI 분석이 적용된 파일인지 확인
+                            boolean hasAIAnalysis = isAIAnalyzed(fileInfo);
+                            if (hasAIAnalysis) {
+                                confidenceText += " 🤖";
+                            }
+
+                            setText(confidenceText);
+
+                            // 신뢰도에 따른 색상 표시
+                            if (confidence >= 0.8) {
+                                setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;"); // 녹색
+                            } else if (confidence >= 0.6) {
+                                setStyle("-fx-text-fill: #f57c00; -fx-font-weight: bold;"); // 주황색
+                            } else {
+                                setStyle("-fx-text-fill: #d32f2f; -fx-font-weight: bold;"); // 빨간색
+                            }
+                            return;
+                        }
+                    }
+                    setText(String.format("%.0f%%", confidence * 100));
+                    setStyle("");
+                } catch (Exception e) {
+                    setText(String.format("%.0f%%", confidence * 100));
+                    setStyle("");
+                }
+            }
+        });
     }
 
     /**
@@ -261,26 +504,52 @@ public class MainController implements Initializable {
     }
 
     /**
-     * 통계 정보 업데이트
+     * 통계 정보 업데이트 (AI 정보 포함)
      */
     private void updateStatistics() {
         if (fileList.isEmpty()) {
-            statsLabel.setText("0 files");
-            statisticsLabel.setText("분석된 파일: 0개 | 정리된 파일: 0개 | 절약된 공간: 0 B");
+            if (statsLabel != null) {
+                statsLabel.setText("0 files");
+            }
+            if (statisticsLabel != null) {
+                statisticsLabel.setText("분석된 파일: 0개 | 정리된 파일: 0개 | 총 크기: 0 B");
+            }
             return;
         }
 
+        // 기본 통계
+        long totalFiles = fileList.size();
         long totalSize = fileList.stream().mapToLong(FileInfo::getFileSize).sum();
         String formattedSize = formatFileSize(totalSize);
 
-        long analyzedCount = fileList.stream().filter(f -> f.getStatus().isCompleted()).count();
-        long organizedCount = fileList.stream().filter(f -> f.getStatus() == ProcessingStatus.ORGANIZED).count();
+        // 상태별 통계
+        long analyzedCount = fileList.stream()
+                .filter(f -> f.getStatus() == ProcessingStatus.ANALYZED || f.getStatus() == ProcessingStatus.ORGANIZED)
+                .count();
+        long organizedCount = fileList.stream()
+                .filter(f -> f.getStatus() == ProcessingStatus.ORGANIZED)
+                .count();
 
-        statsLabel.setText(String.format("%d files (%s) • %d analyzed",
-                fileList.size(), formattedSize, analyzedCount));
+        // AI 분석 통계
+        long aiAnalyzedCount = fileList.stream()
+                .mapToLong(file -> isAIAnalyzed(file) ? 1 : 0)
+                .sum();
 
-        statisticsLabel.setText(String.format("분석된 파일: %d개 | 정리된 파일: %d개 | 총 크기: %s",
-                analyzedCount, organizedCount, formattedSize));
+        // UI 업데이트
+        if (statsLabel != null) {
+            String statsText = String.format("%d files (%s)", totalFiles, formattedSize);
+            if (aiAnalyzedCount > 0) {
+                statsText += String.format(" • %d개 AI 분석됨", aiAnalyzedCount);
+            }
+            statsLabel.setText(statsText);
+        }
+
+        if (statisticsLabel != null) {
+            statisticsLabel.setText(String.format(
+                    "분석된 파일: %d개 | 정리된 파일: %d개 | 총 크기: %s",
+                    analyzedCount, organizedCount, formattedSize
+            ));
+        }
     }
 
     /**
@@ -301,14 +570,20 @@ public class MainController implements Initializable {
     }
 
     /**
-     * Alert 표시 (누락된 메서드 추가)
+     * Alert 대화상자 표시
      */
     private void showAlert(String title, String message, Alert.AlertType type) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(type);
+            alert.setTitle(title);
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+
+            // 다이얼로그 크기 조정
+            alert.getDialogPane().setPrefWidth(400);
+
+            alert.showAndWait();
+        });
     }
 
     // =================
@@ -576,7 +851,7 @@ public class MainController implements Initializable {
     }
 
     /**
-     * 실시간 모니터링 토글 버튼 핸들러
+     * 모니터링 토글 핸들러
      */
     @FXML
     private void handleMonitoringToggle() {
@@ -591,25 +866,27 @@ public class MainController implements Initializable {
      * 실시간 모니터링 시작
      */
     private void startMonitoring() {
-        AppConfig config = configService.loadConfig();
+        AppConfig config = configService.getCurrentConfig();
         String monitoringFolder = config.getDefaultScanFolder();
 
         if (monitoringFolder == null || monitoringFolder.trim().isEmpty()) {
-            // 기본 다운로드 폴더 사용
             monitoringFolder = System.getProperty("user.home") + File.separator + "Downloads";
         }
 
-        // 폴더 선택 다이얼로그 (사용자가 원하는 경우)
-        if (!config.isAutoOrganizeEnabled()) {
-            DirectoryChooser chooser = new DirectoryChooser();
-            chooser.setTitle("모니터링할 폴더 선택");
-            chooser.setInitialDirectory(new File(monitoringFolder));
+        // 폴더 선택 다이얼로그
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("모니터링할 폴더 선택");
+        chooser.setInitialDirectory(new File(monitoringFolder));
 
-            File selectedFolder = chooser.showDialog(monitoringToggleButton.getScene().getWindow());
-            if (selectedFolder == null) {
-                return; // 사용자가 취소
-            }
-            monitoringFolder = selectedFolder.getAbsolutePath();
+        File selectedFolder = chooser.showDialog(monitoringToggleButton.getScene().getWindow());
+        if (selectedFolder == null) {
+            return; // 사용자가 취소
+        }
+        monitoringFolder = selectedFolder.getAbsolutePath();
+
+        // 파일 감시 서비스 초기화 (필요시)
+        if (fileWatcherService == null) {
+            initializeFileWatcher();
         }
 
         // 모니터링 시작
@@ -626,13 +903,19 @@ public class MainController implements Initializable {
 
             updateMonitoringStatus("실시간 모니터링 활성화됨");
 
-            showInfoDialog("모니터링 시작",
-                    "실시간 폴더 모니터링이 시작되었습니다.\n폴더: " + monitoringFolder);
+            // 모니터링 폴더 정보 표시
+            if (monitoringFolderLabel != null) {
+                monitoringFolderLabel.setText(monitoringFolder);
+            }
+            if (monitoringInfoBox != null) {
+                monitoringInfoBox.setVisible(true);
+                monitoringInfoBox.setManaged(true);
+            }
+
+            showAlert("모니터링 시작", "실시간 폴더 모니터링이 시작되었습니다.\n폴더: " + monitoringFolder, Alert.AlertType.INFORMATION);
 
         } else {
-            showAlert("모니터링 시작 실패",
-                    "폴더 모니터링을 시작할 수 없습니다.\n폴더 경로를 확인해주세요.",
-                    Alert.AlertType.ERROR);
+            showAlert("모니터링 시작 실패", "폴더 모니터링을 시작할 수 없습니다.\n폴더 경로를 확인해주세요.", Alert.AlertType.ERROR);
         }
     }
 
@@ -640,16 +923,25 @@ public class MainController implements Initializable {
      * 실시간 모니터링 중지
      */
     private void stopMonitoring() {
-        fileWatcherService.stopWatching();
+        if (fileWatcherService != null) {
+            fileWatcherService.stopWatching();
+        }
+
         isMonitoringActive = false;
         updateMonitoringUI();
 
         // 설정 업데이트
-        AppConfig config = configService.loadConfig();
+        AppConfig config = configService.getCurrentConfig();
         config.setRealTimeMonitoring(false);
         configService.saveConfig(config);
 
         updateMonitoringStatus("실시간 모니터링 중지됨");
+
+        // 모니터링 폴더 정보 숨기기
+        if (monitoringInfoBox != null) {
+            monitoringInfoBox.setVisible(false);
+            monitoringInfoBox.setManaged(false);
+        }
     }
 
     /**
@@ -657,7 +949,7 @@ public class MainController implements Initializable {
      */
     private void handleNewFileDetected(FileInfo newFile) {
         Platform.runLater(() -> {
-            // 테이블 업데이트 (이미 fileWatcherService에서 fileList에 추가함)
+            // 테이블 업데이트
             fileTable.refresh();
 
             // 통계 업데이트
@@ -666,10 +958,22 @@ public class MainController implements Initializable {
             // 상태 메시지 업데이트
             updateStatusLabel("새 파일 감지: " + newFile.getFileName());
 
+            // 현재 파일 표시
+            if (currentFileLabel != null) {
+                currentFileLabel.setText("감지됨: " + newFile.getFileName());
+
+                // 3초 후 자동으로 지우기
+                Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), e -> {
+                    if (currentFileLabel != null) {
+                        currentFileLabel.setText("");
+                    }
+                }));
+                timeline.play();
+            }
+
             // 자동 정리가 완료된 경우 성공 메시지
             if (newFile.getStatus() == ProcessingStatus.ORGANIZED) {
-                showTemporaryMessage("파일 자동 정리: " + newFile.getFileName() + " → " +
-                        newFile.getDetectedCategory());
+                showTemporaryMessage("파일 자동 정리: " + newFile.getFileName() + " → " + newFile.getDetectedCategory());
             }
         });
     }
@@ -681,11 +985,81 @@ public class MainController implements Initializable {
         Platform.runLater(() -> {
             if (monitoringStatusLabel != null) {
                 monitoringStatusLabel.setText(message);
+
+                // 상태에 따른 스타일 적용
+                if (isMonitoringActive) {
+                    monitoringStatusLabel.getStyleClass().removeAll("status-inactive", "status-error");
+                    monitoringStatusLabel.getStyleClass().add("status-active");
+                } else {
+                    monitoringStatusLabel.getStyleClass().removeAll("status-active", "status-error");
+                    monitoringStatusLabel.getStyleClass().add("status-inactive");
+                }
             }
 
             // 상태바에도 표시
             updateStatusLabel(message);
         });
+    }
+
+    /**
+     * 통계 화면 핸들러
+     */
+    @FXML
+    private void handleStatistics() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/statistics.fxml"));
+            Parent statisticsRoot = loader.load();
+
+            // 통계 컨트롤러에 현재 파일 데이터 전달
+            Object controller = loader.getController();
+            if (controller instanceof com.smartfilemanager.controller.StatisticsController) {
+                ((com.smartfilemanager.controller.StatisticsController) controller).updateFileList(fileList);
+            }
+
+            Stage statisticsStage = new Stage();
+            statisticsStage.setTitle("📊 파일 정리 통계");
+            statisticsStage.setScene(new Scene(statisticsRoot, 1200, 800));
+            statisticsStage.initModality(Modality.APPLICATION_MODAL);
+            statisticsStage.show();
+
+        } catch (IOException e) {
+            showAlert("오류", "통계 창을 열 수 없습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    /**
+     * 테마 토글 핸들러
+     */
+    @FXML
+    private void handleThemeToggle() {
+        try {
+            Scene scene = settingsButton.getScene();
+            ObservableList<String> stylesheets = scene.getStylesheets();
+
+            boolean isDarkTheme = stylesheets.toString().contains("dark-theme.css");
+
+            if (isDarkTheme) {
+                // 라이트 테마로 변경
+                stylesheets.clear();
+                stylesheets.add(getClass().getResource("/css/styles.css").toExternalForm());
+                showTemporaryMessage("라이트 테마가 적용되었습니다 ☀️");
+            } else {
+                // 다크 테마로 변경
+                stylesheets.add(getClass().getResource("/css/dark-theme.css").toExternalForm());
+                showTemporaryMessage("다크 테마가 적용되었습니다 🌙");
+            }
+
+            // 루트 노드에 클래스 추가/제거
+            Parent root = scene.getRoot();
+            if (!isDarkTheme) {
+                root.getStyleClass().add("dark-theme");
+            } else {
+                root.getStyleClass().remove("dark-theme");
+            }
+
+        } catch (Exception e) {
+            showAlert("오류", "테마 변경 중 오류가 발생했습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
     }
 
     /**
@@ -695,37 +1069,34 @@ public class MainController implements Initializable {
         Platform.runLater(() -> {
             if (monitoringToggleButton != null) {
                 if (isMonitoringActive) {
-                    monitoringToggleButton.setText("🛑 모니터링 중지");
-                    monitoringToggleButton.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white;");
+                    monitoringToggleButton.setText("⏹️ 모니터링 중지");
+                    monitoringToggleButton.getStyleClass().remove("monitoring-button");
+                    monitoringToggleButton.getStyleClass().add("monitoring-button");
+                    monitoringToggleButton.getStyleClass().add("active");
                 } else {
-                    monitoringToggleButton.setText("▶️ 모니터링 시작");
-                    monitoringToggleButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white;");
+                    monitoringToggleButton.setText("⚡ 모니터링 시작");
+                    monitoringToggleButton.getStyleClass().removeAll("active");
+                    monitoringToggleButton.getStyleClass().add("monitoring-button");
                 }
             }
 
-            if (monitoringFolderLabel != null) {
-                String folder = fileWatcherService.getWatchedDirectory();
-                if (folder != null) {
-                    monitoringFolderLabel.setText("📁 " + folder);
-                } else {
-                    monitoringFolderLabel.setText("📁 모니터링 중인 폴더 없음");
-                }
+            if (realTimeMonitoringMenuItem != null) {
+                realTimeMonitoringMenuItem.setSelected(isMonitoringActive);
             }
         });
     }
 
     /**
-     * 일시적 메시지 표시 (3초 후 사라짐)
+     * 임시 메시지 표시
      */
     private void showTemporaryMessage(String message) {
-        if (statusLabel != null) {
-            statusLabel.setText(message);
-            statusLabel.setStyle("-fx-text-fill: #28a745; -fx-font-weight: bold;");
+        if (currentFileLabel != null) {
+            currentFileLabel.setText(message);
 
-            // 3초 후 원래 상태로 복원
             Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), e -> {
-                statusLabel.setStyle("-fx-text-fill: #333;");
-                updateStatistics(); // 통계로 다시 표시
+                if (currentFileLabel != null) {
+                    currentFileLabel.setText("");
+                }
             }));
             timeline.play();
         }
@@ -1103,39 +1474,73 @@ public class MainController implements Initializable {
     // 헬퍼 메서드들
     // =================
 
+    /**
+     * 상태 아이콘 반환
+     */
     private String getStatusIcon(ProcessingStatus status) {
+        if (status == null) return "⏸️";
+
         switch (status) {
-            case PENDING: return "⏳";
-            case SCANNING: return "🔍";
-            case ANALYZED: return "✅";
-            case ORGANIZING: return "📦";
-            case ORGANIZED: return "🎯";
-            case FAILED: return "❌";
-            case SKIPPED: return "⏭️";
-            default: return "❓";
+            case PENDING: return "⏳";           // 대기 중
+            case SCANNING: return "🔍";          // 스캔 중
+            case ANALYZED: return "✅";          // 분석 완료
+            case ORGANIZING: return "📦";        // 정리 중
+            case ORGANIZED: return "🎯";         // 정리 완료
+            case FAILED: return "❌";            // 실패
+            case SKIPPED: return "⏭️";          // 건너뜀
+            default: return "⏸️";
         }
     }
 
+    /**
+     * 상태 색상 반환
+     */
+    private String getStatusColor(ProcessingStatus status) {
+        if (status == null) return "#6c757d";
+
+        switch (status) {
+            case PENDING: return "#6c757d";      // 회색 (대기 중)
+            case SCANNING: return "#007bff";     // 파란색 (스캔 중)
+            case ANALYZED: return "#17a2b8";     // 청록색 (분석 완료)
+            case ORGANIZING: return "#ffc107";   // 노란색 (정리 중)
+            case ORGANIZED: return "#28a745";    // 초록색 (정리 완료)
+            case FAILED: return "#dc3545";       // 빨간색 (실패)
+            case SKIPPED: return "#6f42c1";      // 보라색 (건너뜀)
+            default: return "#6c757d";           // 회색
+        }
+    }
+
+    /**
+     * 파일 아이콘 반환
+     */
     private String getFileIcon(String category) {
         if (category == null) return "📄";
+
         switch (category.toLowerCase()) {
-            case "images": return "🖼️";
             case "documents": return "📄";
-            case "videos": return "🎥";
+            case "images": return "🖼️";
+            case "videos": return "🎬";
             case "audio": return "🎵";
             case "archives": return "📦";
             case "applications": return "⚙️";
+            case "spreadsheets": return "📊";
             case "code": return "💻";
-            default: return "📄";
+            case "fonts": return "🔤";
+            case "ebooks": return "📚";
+            default: return "📁";
         }
     }
 
+    /**
+     * 파일 크기 포맷팅
+     */
     private String formatFileSize(long bytes) {
         if (bytes < 1024) return bytes + " B";
         if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
         if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
         return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
     }
+
 
     private Stage getCurrentStage() {
         return (Stage) fileTable.getScene().getWindow();
@@ -1268,26 +1673,21 @@ public class MainController implements Initializable {
     }
 
     /**
-     * 파일이 AI 분석되었는지 확인 (완성된 버전)
+     * 파일이 AI 분석되었는지 확인
      */
     private boolean isAIAnalyzed(FileInfo fileInfo) {
-        // AI 분석된 파일은 보통 키워드에 "ai-analyzed" 마커가 있음
         if (fileInfo.getKeywords() != null && fileInfo.getKeywords().contains("ai-analyzed")) {
             return true;
         }
 
-        // 설명에 "AI 분석:" 이 포함된 경우
-        if (fileInfo.getDescription() != null &&
-                fileInfo.getDescription().contains("AI 분석:")) {
+        if (fileInfo.getDescription() != null && fileInfo.getDescription().contains("AI 분석:")) {
             return true;
         }
 
-        // 키워드 수가 많은 경우 (AI가 추가했을 가능성)
         if (fileInfo.getKeywords() != null && fileInfo.getKeywords().size() > 8) {
             return true;
         }
 
-        // 신뢰도가 매우 높은 경우 (AI 분석 결과일 가능성)
         return fileInfo.getConfidenceScore() > 0.9;
     }
 
@@ -1328,51 +1728,151 @@ public class MainController implements Initializable {
     }
 
     /**
-     * AI 분석 배치 실행 (완성된 버전)
+     * AI 배치 분석 핸들러
      */
     @FXML
     private void handleBatchAIAnalysis() {
-        List<FileInfo> unanalyzedFiles = fileList.stream()
-                .filter(file -> !isAIAnalyzed(file))
-                .filter(file -> file.getStatus() != ProcessingStatus.FAILED)
+        if (!fileAnalysisService.isAIAnalysisAvailable()) {
+            showAlert("AI 분석 불가", "AI 분석이 활성화되지 않았습니다.\n설정에서 AI API 키를 확인해주세요.", Alert.AlertType.WARNING);
+            return;
+        }
+
+        List<FileInfo> analyzedFiles = fileList.stream()
+                .filter(file -> file.getStatus() == ProcessingStatus.ANALYZED)
                 .collect(Collectors.toList());
 
-        if (unanalyzedFiles.isEmpty()) {
-            showAlert("알림", "AI 분석이 필요한 파일이 없습니다.\n모든 파일이 이미 분석되었거나 AI 분석에 적합하지 않습니다.", Alert.AlertType.INFORMATION);
+        if (analyzedFiles.isEmpty()) {
+            showAlert("분석할 파일 없음", "AI로 재분석할 파일이 없습니다.\n먼저 폴더를 스캔해주세요.", Alert.AlertType.INFORMATION);
             return;
         }
 
-        // AI 분석 가능 여부 확인
-        if (!fileAnalysisService.isAIAnalysisAvailable()) {
-            showAlert("오류", "AI 분석이 활성화되지 않았습니다.\n설정에서 AI 분석을 활성화하고 유효한 API 키를 입력해주세요.", Alert.AlertType.ERROR);
-            return;
-        }
-
-        // 비용 계산 및 확인 다이얼로그
-        double estimatedCost = unanalyzedFiles.size() * 0.005; // 파일당 약 0.005원
-
+        // 확인 다이얼로그
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("AI 배치 분석");
-        confirmAlert.setHeaderText(unanalyzedFiles.size() + "개 파일을 AI로 분석하시겠습니까?");
-
-        String contentText = String.format(
-                "🤖 AI 분석 대상: %d개 파일\n" +
-                        "💰 예상 비용: 약 %.3f원 (파일당 0.005원)\n" +
-                        "⏱️ 예상 시간: %d~%d분\n\n" +
-                        "⚠️ 이 작업은 OpenAI API를 사용하며 실제 비용이 발생할 수 있습니다.\n" +
-                        "계속하시겠습니까?",
-                unanalyzedFiles.size(),
-                estimatedCost,
-                unanalyzedFiles.size() / 30, // 30개/분 가정
-                unanalyzedFiles.size() / 20  // 20개/분 가정
-        );
-
-        confirmAlert.setContentText(contentText);
+        confirmAlert.setHeaderText(analyzedFiles.size() + "개 파일을 AI로 재분석하시겠습니까?");
+        confirmAlert.setContentText("이 작업은 OpenAI API를 사용하며 비용이 발생할 수 있습니다.\n예상 비용: 약 " +
+                String.format("%.3f", calculateAICost(analyzedFiles.size())) + "원");
 
         Optional<ButtonType> result = confirmAlert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            runBatchAIAnalysisAsync(unanalyzedFiles);
+            performBatchAIAnalysis(analyzedFiles);
         }
+    }
+
+    /**
+     * AI 배치 분석 실행
+     */
+    private void performBatchAIAnalysis(List<FileInfo> files) {
+        // UI 상태 업데이트
+        aiAnalysisButton.setDisable(true);
+        aiAnalysisButton.setText("AI 분석 중...");
+        updateStatusLabel("AI 배치 분석을 시작합니다... 🤖");
+
+        Task<Integer> batchAnalysisTask = new Task<Integer>() {
+            @Override
+            protected Integer call() throws Exception {
+                int successful = 0;
+                int total = files.size();
+
+                for (int i = 0; i < files.size(); i++) {
+                    FileInfo file = files.get(i);
+
+                    try {
+                        // AI 재분석 수행
+                        FileInfo reanalyzed = fileAnalysisService.analyzeFileWithAI(file.getFilePath());
+
+                        if (reanalyzed != null) {
+                            // 기존 FileInfo에 AI 분석 결과 적용
+                            updateFileInfoFromReanalysis(file, reanalyzed);
+                            successful++;
+                        }
+
+                        // 진행률 및 UI 업데이트
+                        final int currentProgress = i + 1;
+                        Platform.runLater(() -> {
+                            double progress = (double) currentProgress / total;
+                            progressBar.setProgress(progress);
+
+                            if (currentFileLabel != null) {
+                                currentFileLabel.setText("AI 분석 중: " + file.getFileName());
+                            }
+
+                            // 테이블 갱신
+                            fileTable.refresh();
+                        });
+
+                        // API 호출 제한을 위한 지연
+                        Thread.sleep(300);
+
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    } catch (Exception e) {
+                        System.err.println("[ERROR] AI 분석 오류: " + file.getFileName() + " - " + e.getMessage());
+                    }
+                }
+
+                return successful;
+            }
+
+            @Override
+            protected void succeeded() {
+                Platform.runLater(() -> {
+                    Integer successCount = getValue();
+
+                    updateStatusLabel("AI 배치 분석 완료! 🎉");
+                    progressBar.setProgress(1.0);
+
+                    if (currentFileLabel != null) {
+                        currentFileLabel.setText("");
+                    }
+
+                    updateStatistics();
+                    fileTable.refresh();
+
+                    // 결과 알림
+                    String resultMessage = String.format(
+                            "🎉 AI 배치 분석이 완료되었습니다!\n\n" +
+                                    "✅ 성공적으로 분석된 파일: %d개\n" +
+                                    "❌ 분석 실패한 파일: %d개\n\n" +
+                                    "🤖 AI 분석을 통해 파일 분류 정확도가 향상되었습니다.",
+                            successCount, files.size() - successCount
+                    );
+
+                    showAlert("완료", resultMessage, Alert.AlertType.INFORMATION);
+
+                    // 버튼 상태 복원
+                    aiAnalysisButton.setDisable(false);
+                    aiAnalysisButton.setText("🤖 AI 분석");
+                });
+            }
+
+            @Override
+            protected void failed() {
+                Platform.runLater(() -> {
+                    updateStatusLabel("AI 배치 분석 실패");
+                    progressBar.setProgress(0);
+
+                    if (currentFileLabel != null) {
+                        currentFileLabel.setText("");
+                    }
+
+                    Throwable exception = getException();
+                    String errorMessage = "AI 배치 분석 중 오류가 발생했습니다:\n" +
+                            (exception != null ? exception.getMessage() : "알 수 없는 오류");
+
+                    showAlert("오류", errorMessage, Alert.AlertType.ERROR);
+
+                    // 버튼 상태 복원
+                    aiAnalysisButton.setDisable(false);
+                    aiAnalysisButton.setText("🤖 AI 분석");
+                });
+            }
+        };
+
+        Thread batchThread = new Thread(batchAnalysisTask);
+        batchThread.setDaemon(true);
+        batchThread.start();
     }
 
     /**
@@ -1507,10 +2007,9 @@ public class MainController implements Initializable {
     }
 
     /**
-     * 재분석 결과를 기존 FileInfo에 적용 (완성된 버전)
+     * 재분석 결과를 기존 FileInfo에 적용
      */
     private void updateFileInfoFromReanalysis(FileInfo original, FileInfo reanalyzed) {
-        // AI 분석으로 향상된 정보들을 기존 객체에 적용
         if (reanalyzed.getDetectedCategory() != null) {
             original.setDetectedCategory(reanalyzed.getDetectedCategory());
         }
@@ -1524,12 +2023,11 @@ public class MainController implements Initializable {
         }
 
         if (reanalyzed.getDescription() != null) {
-            // 기존 설명과 AI 분석 결과 결합
             String currentDesc = original.getDescription();
             if (currentDesc != null) {
-                original.setDescription(currentDesc + "\n\n" + reanalyzed.getDescription());
+                original.setDescription(currentDesc + "\n\nAI 분석: " + reanalyzed.getDescription());
             } else {
-                original.setDescription(reanalyzed.getDescription());
+                original.setDescription("AI 분석: " + reanalyzed.getDescription());
             }
         }
 
@@ -1538,6 +2036,11 @@ public class MainController implements Initializable {
             if (originalKeywords == null) {
                 originalKeywords = new ArrayList<>();
                 original.setKeywords(originalKeywords);
+            }
+
+            // AI 분석 마커 추가
+            if (!originalKeywords.contains("ai-analyzed")) {
+                originalKeywords.add("ai-analyzed");
             }
 
             // 새로운 키워드들 추가 (중복 제거)
@@ -1680,11 +2183,12 @@ public class MainController implements Initializable {
     }
 
     /**
-     * AI 분석 비용 계산기 (완성된 버전)
+     * AI 비용 계산
      */
     private double calculateAICost(int fileCount) {
-        // 파일당 평균 비용 (추정치)
-        double costPerFile = 0.005; // 0.005원
+        // OpenAI API 대략적인 비용 계산 (한국 원화)
+        // GPT-3.5-turbo 기준: 약 0.002달러/1K토큰, 1달러 = 1300원 가정
+        double costPerFile = 0.001 * 1300; // 파일당 약 1.3원
         return fileCount * costPerFile;
     }
 
@@ -1739,11 +2243,54 @@ public class MainController implements Initializable {
     }
 
     /**
-     * AI 분석 메뉴 항목 핸들러
+     * AI 분석 요약 표시 핸들러
      */
     @FXML
     private void handleShowAISummary() {
-        showAIAnalysisSummary();
+        long totalFiles = fileList.size();
+        long aiAnalyzedFiles = fileList.stream()
+                .mapToLong(file -> isAIAnalyzed(file) ? 1 : 0)
+                .sum();
+
+        if (aiAnalyzedFiles == 0) {
+            showAlert("AI 분석 결과 없음", "아직 AI로 분석된 파일이 없습니다.\n'AI 분석' 버튼을 사용해서 파일을 분석해보세요.", Alert.AlertType.INFORMATION);
+            return;
+        }
+
+        // 카테고리별 분석 결과
+        Map<String, Long> categoryStats = fileList.stream()
+                .filter(this::isAIAnalyzed)
+                .collect(Collectors.groupingBy(
+                        f -> f.getDetectedCategory() != null ? f.getDetectedCategory() : "Unknown",
+                        Collectors.counting()
+                ));
+
+        // 평균 신뢰도 계산
+        double avgConfidence = fileList.stream()
+                .filter(this::isAIAnalyzed)
+                .mapToDouble(FileInfo::getConfidenceScore)
+                .average()
+                .orElse(0.0);
+
+        StringBuilder summary = new StringBuilder();
+        summary.append("🤖 AI 분석 결과 요약\n\n");
+        summary.append("📊 분석된 파일: ").append(aiAnalyzedFiles).append("개 / ").append(totalFiles).append("개 총\n");
+        summary.append("📈 평균 신뢰도: ").append(String.format("%.1f%%", avgConfidence * 100)).append("\n\n");
+        summary.append("📂 카테고리별 분포:\n");
+
+        categoryStats.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .forEach(entry -> summary.append("  • ").append(entry.getKey()).append(": ").append(entry.getValue()).append("개\n"));
+
+        double estimatedCost = calculateAICost((int) aiAnalyzedFiles);
+        summary.append("\n💰 예상 사용 비용: 약 ").append(String.format("%.3f", estimatedCost)).append("원");
+
+        Alert summaryAlert = new Alert(Alert.AlertType.INFORMATION);
+        summaryAlert.setTitle("AI 분석 요약");
+        summaryAlert.setHeaderText("AI 분석 결과 요약");
+        summaryAlert.setContentText(summary.toString());
+        summaryAlert.getDialogPane().setPrefWidth(400);
+        summaryAlert.showAndWait();
     }
 
     /**

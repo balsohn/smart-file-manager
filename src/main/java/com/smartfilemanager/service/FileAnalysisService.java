@@ -13,9 +13,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,6 +26,10 @@ public class FileAnalysisService {
     private final ConfigService configService;
     private final AIAnalyzer aiAnalyzer;
     private AppConfig currentConfig;
+
+    // AI 분석 관련 필드
+    private boolean aiAnalysisEnabled = false;
+    private String aiApiKey = null;
 
     public FileAnalysisService() {
         this.configService = new ConfigService();
@@ -43,6 +45,9 @@ public class FileAnalysisService {
      */
     private void initializeAI() {
         if (currentConfig.isEnableAIAnalysis() && currentConfig.getAiApiKey() != null) {
+            this.aiAnalysisEnabled = true;
+            this.aiApiKey = currentConfig.getAiApiKey();
+
             aiAnalyzer.setApiKey(currentConfig.getAiApiKey());
             aiAnalyzer.setModel(currentConfig.getAiModel() != null ?
                     currentConfig.getAiModel() : "gpt-3.5-turbo");
@@ -53,6 +58,8 @@ public class FileAnalysisService {
             // API 키 유효성 검사 (비동기)
             validateApiKeyAsync();
         } else {
+            this.aiAnalysisEnabled = false;
+            this.aiApiKey = null;
             System.out.println("[INFO] AI 분석이 비활성화되어 있습니다.");
         }
     }
@@ -68,11 +75,45 @@ public class FileAnalysisService {
                     System.out.println("[AI] ✅ API 키 검증 성공 - AI 분석 준비 완료");
                 } else {
                     System.err.println("[WARNING] ❌ AI API 키가 유효하지 않습니다.");
+                    this.aiAnalysisEnabled = false;
                 }
             } catch (Exception e) {
                 System.err.println("[ERROR] API 키 검증 중 오류: " + e.getMessage());
+                this.aiAnalysisEnabled = false;
             }
         }).start();
+    }
+
+    /**
+     * AI 분석이 사용 가능한지 확인
+     */
+    public boolean isAIAnalysisAvailable() {
+        AppConfig config = configService.getCurrentConfig();
+        return config.isEnableAIAnalysis() &&
+                config.getAiApiKey() != null &&
+                !config.getAiApiKey().trim().isEmpty() &&
+                this.aiAnalysisEnabled;
+    }
+
+    /**
+     * AI 설정 새로고침
+     */
+    public void refreshConfig() {
+        try {
+            AppConfig config = configService.getCurrentConfig();
+            this.aiAnalysisEnabled = config.isEnableAIAnalysis();
+            this.aiApiKey = config.getAiApiKey();
+            this.currentConfig = config;
+
+            initializeAI();
+
+            System.out.println("[AI] 설정 새로고침: AI 활성화=" + aiAnalysisEnabled +
+                    ", API 키 설정됨=" + (aiApiKey != null && !aiApiKey.trim().isEmpty()));
+        } catch (Exception e) {
+            System.err.println("[AI] 설정 새로고침 실패: " + e.getMessage());
+            this.aiAnalysisEnabled = false;
+            this.aiApiKey = null;
+        }
     }
 
     /**
@@ -98,127 +139,73 @@ public class FileAnalysisService {
             // 3. MIME 타입 감지
             detectMimeType(fileInfo, path);
 
-            // 4. 기본 카테고리 분류
+            // 4. 기본 카테고리 분류 (확장자 기반)
             classifyBasicCategory(fileInfo);
 
-            // 5. 스마트 서브카테고리 분류
-            classifySmartSubCategory(fileInfo);
+            // 5. 파일명 분석
+            analyzeFileName(fileInfo);
 
-            // 6. 파일명 패턴 분석
-            analyzeFileNamePatterns(fileInfo);
+            // 6. 세부 카테고리 분류
+            classifyDetailedCategory(fileInfo);
 
-            // 7. 내용 기반 분석 (선택적)
-            if (shouldAnalyzeContent(fileInfo)) {
-                analyzeFileContent(fileInfo);
+            // 7. 기본 신뢰도 설정
+            calculateBasicConfidence(fileInfo);
+
+            // 8. AI 분석 적용 (설정이 켜져있다면)
+            if (isAIAnalysisAvailable()) {
+                enhanceWithAI(fileInfo);
             }
 
-            // 8. 신뢰도 점수 계산 (AI 분석 전)
-            calculateBasicConfidenceScore(fileInfo);
+            // 9. 추천 경로 결정
+            determineSuggestedPath(fileInfo);
 
-            // 9. AI 분석 (설정이 활성화된 경우)
-            if (shouldUseAIAnalysis(fileInfo)) {
-                enhanceWithAIAnalysis(fileInfo);
-            }
-
-            // 10. 최종 신뢰도 점수 재계산
-            calculateFinalConfidenceScore(fileInfo);
-
-            // 11. 추천 경로 생성
-            generateSuggestedPath(fileInfo);
-
+            // 10. 상태 설정
             fileInfo.setStatus(ProcessingStatus.ANALYZED);
             fileInfo.setProcessedAt(LocalDateTime.now());
 
-            System.out.println("[분석] ✅ 파일 분석 완료: " + fileInfo.getFileName() +
-                    " (카테고리: " + fileInfo.getDetectedCategory() +
-                    ", 신뢰도: " + String.format("%.2f", fileInfo.getConfidenceScore()) + ")");
+            System.out.println("[분석] 분석 완료: " + fileInfo.getFileName() +
+                    " → " + fileInfo.getDetectedCategory() +
+                    " (신뢰도: " + String.format("%.2f", fileInfo.getConfidenceScore()) + ")");
 
             return fileInfo;
 
         } catch (Exception e) {
             System.err.println("[ERROR] 파일 분석 실패: " + filePath + " - " + e.getMessage());
 
+            // 에러 FileInfo 생성
             FileInfo errorInfo = new FileInfo();
             errorInfo.setFilePath(filePath);
             errorInfo.setFileName(Paths.get(filePath).getFileName().toString());
             errorInfo.setStatus(ProcessingStatus.FAILED);
             errorInfo.setErrorMessage(e.getMessage());
+            errorInfo.setDetectedCategory("Unknown");
+            errorInfo.setConfidenceScore(0.0);
+
             return errorInfo;
         }
     }
 
     /**
-     * AI 분석 사용 여부 판단
+     * AI를 사용한 파일 분석 (실제 OpenAI API 연동)
      */
-    private boolean shouldUseAIAnalysis(FileInfo fileInfo) {
-        // AI 분석이 비활성화된 경우
-        if (!aiAnalyzer.isEnabled()) {
-            return false;
+    public FileInfo analyzeFileWithAI(String filePath) {
+        if (!isAIAnalysisAvailable()) {
+            throw new IllegalStateException("AI 분석이 활성화되지 않았습니다");
         }
 
-        // 신뢰도가 이미 매우 높은 경우 AI 분석 생략 (성능 최적화)
-        if (fileInfo.getConfidenceScore() > 0.95) {
-            System.out.println("[AI] 신뢰도가 높아 AI 분석 생략: " + fileInfo.getFileName());
-            return false;
-        }
-
-        // 파일 크기가 너무 큰 경우 제외
-        long maxSizeForAI = currentConfig.getMaxFileSizeForAnalysis() * 1024 * 1024L; // MB to bytes
-        if (fileInfo.getFileSize() > maxSizeForAI) {
-            System.out.println("[AI] 파일 크기 초과로 AI 분석 생략: " + fileInfo.getFileName());
-            return false;
-        }
-
-        // AI 분석이 유용한 파일 타입만 선택
-        String extension = fileInfo.getFileExtension().toLowerCase();
-        boolean worthwhile = isAIAnalysisWorthwhile(extension);
-
-        if (!worthwhile) {
-            System.out.println("[AI] AI 분석 비적합 파일 타입: " + fileInfo.getFileName());
-        }
-
-        return worthwhile;
-    }
-
-    /**
-     * AI 분석이 가치 있는 파일 타입인지 확인
-     */
-    private boolean isAIAnalysisWorthwhile(String extension) {
-        // 문서 파일: AI가 내용을 분석해서 정확한 분류 가능
-        if (extension.matches("pdf|doc|docx|txt|rtf|odt|ppt|pptx|xls|xlsx")) {
-            return true;
-        }
-
-        // 이미지 파일: 스크린샷, 사진 등 구분 가능
-        if (extension.matches("jpg|jpeg|png|gif|bmp|webp|tiff")) {
-            return true;
-        }
-
-        // 비디오 파일: 제목으로 콘텐츠 유형 판단 가능
-        if (extension.matches("mp4|avi|mkv|mov|wmv|flv|webm")) {
-            return true;
-        }
-
-        // 코드 파일: 프로젝트 유형이나 언어별 분류 가능
-        if (extension.matches("java|py|js|html|css|cpp|c|h|php|rb|go|rs")) {
-            return true;
-        }
-
-        // 기타 확장자가 모호한 경우
-        if (extension.isEmpty() || extension.equals("tmp") || extension.equals("dat") || extension.equals("unknown")) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * AI 분석으로 파일 정보 향상
-     */
-    private void enhanceWithAIAnalysis(FileInfo fileInfo) {
         try {
+            // 기본 분석 먼저 수행
+            FileInfo fileInfo = analyzeFile(filePath);
+
+            // AI 분석이 가치 있는 파일인지 확인
+            if (!isAIAnalysisWorthwhile(fileInfo)) {
+                System.out.println("[AI] AI 분석 비적합 파일: " + fileInfo.getFileName());
+                return fileInfo;
+            }
+
             System.out.println("[AI] 🤖 AI 분석 시작: " + fileInfo.getFileName());
 
+            // 실제 AI 분석 수행
             String aiResponse = aiAnalyzer.analyzeFile(fileInfo);
 
             if (aiResponse != null) {
@@ -247,10 +234,91 @@ public class FileAnalysisService {
                 System.out.println("[AI] ⚠️ AI 분석 응답 없음: " + fileInfo.getFileName());
             }
 
+            return fileInfo;
+
         } catch (Exception e) {
-            System.err.println("[ERROR] AI 분석 중 오류: " + fileInfo.getFileName() + " - " + e.getMessage());
-            // AI 분석 실패는 전체 분석을 중단하지 않음
+            System.err.println("[ERROR] AI 파일 분석 실패: " + filePath + " - " + e.getMessage());
+            throw new RuntimeException("AI 분석 실패: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * AI 분석 시뮬레이션 (실제 API 연동 전까지 사용)
+     */
+    private void simulateAIAnalysis(FileInfo fileInfo) {
+        String fileName = fileInfo.getFileName().toLowerCase();
+        String extension = fileInfo.getFileExtension().toLowerCase();
+
+        // 파일명과 확장자를 기반으로 더 정확한 분류 시뮬레이션
+        if (fileName.contains("invoice") || fileName.contains("receipt") || fileName.contains("bill")) {
+            fileInfo.setDetectedCategory("Documents");
+            fileInfo.setDetectedSubCategory("Financial");
+            fileInfo.setConfidenceScore(0.95);
+            fileInfo.setDescription("AI 분석: 재무 관련 문서로 분류됨");
+        } else if (fileName.contains("resume") || fileName.contains("cv")) {
+            fileInfo.setDetectedCategory("Documents");
+            fileInfo.setDetectedSubCategory("Resume");
+            fileInfo.setConfidenceScore(0.92);
+            fileInfo.setDescription("AI 분석: 이력서로 분류됨");
+        } else if (fileName.contains("screenshot") || fileName.contains("screen")) {
+            fileInfo.setDetectedCategory("Images");
+            fileInfo.setDetectedSubCategory("Screenshots");
+            fileInfo.setConfidenceScore(0.88);
+            fileInfo.setDescription("AI 분석: 스크린샷으로 분류됨");
+        } else if (fileName.contains("wallpaper") || fileName.contains("background")) {
+            fileInfo.setDetectedCategory("Images");
+            fileInfo.setDetectedSubCategory("Wallpapers");
+            fileInfo.setConfidenceScore(0.85);
+            fileInfo.setDescription("AI 분석: 배경화면으로 분류됨");
+        } else {
+            // 기본 확장자 기반 분류에 AI 신뢰도 보너스 적용
+            classifyBasicCategory(fileInfo);
+            fileInfo.setConfidenceScore(Math.min(fileInfo.getConfidenceScore() + 0.15, 1.0));
+            fileInfo.setDescription("AI 분석: 향상된 분류 신뢰도");
+        }
+
+        // AI 키워드 추가
+        List<String> aiKeywords = generateAIKeywords(fileName, extension);
+        if (fileInfo.getKeywords() == null) {
+            fileInfo.setKeywords(new ArrayList<>());
+        }
+        fileInfo.getKeywords().addAll(aiKeywords);
+    }
+
+    /**
+     * AI 키워드 생성 시뮬레이션
+     */
+    private List<String> generateAIKeywords(String fileName, String extension) {
+        List<String> keywords = new ArrayList<>();
+
+        // 파일명에서 키워드 추출
+        String[] words = fileName.replaceAll("[^a-zA-Z0-9가-힣\\s]", " ").split("\\s+");
+        for (String word : words) {
+            if (word.length() > 2) {
+                keywords.add(word.toLowerCase());
+            }
+        }
+
+        // 확장자 기반 키워드
+        switch (extension) {
+            case "pdf":
+                keywords.add("document");
+                keywords.add("portable");
+                break;
+            case "jpg":
+            case "jpeg":
+            case "png":
+                keywords.add("image");
+                keywords.add("photo");
+                break;
+            case "mp4":
+            case "avi":
+                keywords.add("video");
+                keywords.add("media");
+                break;
+        }
+
+        return keywords;
     }
 
     /**
@@ -290,12 +358,12 @@ public class FileAnalysisService {
 
         // 숨김 파일 여부 확인
         if (Files.isHidden(path)) {
-            fileInfo.addKeyword("hidden");
+            fileInfo.getKeywords().add("hidden");
         }
 
         // 읽기 전용 파일 확인
         if (!Files.isWritable(path)) {
-            fileInfo.addKeyword("readonly");
+            fileInfo.getKeywords().add("readonly");
         }
     }
 
@@ -343,20 +411,24 @@ public class FileAnalysisService {
             fileInfo.setDetectedCategory("Audio");
         }
         // 압축파일
-        else if (extension.matches("zip|rar|7z|tar|gz|bz2|xz|lz|lzma")) {
+        else if (extension.matches("zip|rar|7z|tar|gz|bz2|xz")) {
             fileInfo.setDetectedCategory("Archives");
         }
         // 실행파일
-        else if (extension.matches("exe|msi|dmg|app|deb|rpm|pkg")) {
+        else if (extension.matches("exe|msi|dmg|pkg|deb|rpm|app")) {
             fileInfo.setDetectedCategory("Applications");
         }
         // 코드 파일
-        else if (extension.matches("java|py|js|html|css|cpp|c|h|php|rb|go|rs|kt|swift|ts")) {
+        else if (extension.matches("java|py|js|html|css|cpp|c|h|php|rb|go|rs")) {
             fileInfo.setDetectedCategory("Code");
         }
-        // 시스템 파일
-        else if (extension.matches("dll|sys|ini|cfg|conf|log")) {
-            fileInfo.setDetectedCategory("System");
+        // 폰트 파일
+        else if (extension.matches("ttf|otf|woff|woff2|eot")) {
+            fileInfo.setDetectedCategory("Fonts");
+        }
+        // 전자책
+        else if (extension.matches("epub|mobi|azw|azw3|fb2")) {
+            fileInfo.setDetectedCategory("Ebooks");
         }
         // 기타
         else {
@@ -365,385 +437,214 @@ public class FileAnalysisService {
     }
 
     /**
-     * 스마트 서브카테고리 분류
+     * 파일명 분석
      */
-    private void classifySmartSubCategory(FileInfo fileInfo) {
+    private void analyzeFileName(FileInfo fileInfo) {
         String fileName = fileInfo.getFileName().toLowerCase();
-        String category = fileInfo.getDetectedCategory();
-
-        switch (category) {
-            case "Images":
-                analyzeImageSubCategory(fileInfo, fileName);
-                break;
-            case "Documents":
-                analyzeDocumentSubCategory(fileInfo, fileName);
-                break;
-            case "Videos":
-                analyzeVideoSubCategory(fileInfo, fileName);
-                break;
-            case "Audio":
-                analyzeAudioSubCategory(fileInfo, fileName);
-                break;
-            case "Code":
-                analyzeCodeSubCategory(fileInfo, fileName);
-                break;
-        }
-    }
-
-    /**
-     * 이미지 서브카테고리 분석
-     */
-    private void analyzeImageSubCategory(FileInfo fileInfo, String fileName) {
-        if (fileName.contains("screenshot") || fileName.contains("screen shot") ||
-                fileName.contains("capture") || fileName.contains("snap") || fileName.startsWith("screenshot")) {
-            fileInfo.setDetectedSubCategory("Screenshots");
-        }
-        else if (fileName.contains("wallpaper") || fileName.contains("background") ||
-                fileName.contains("desktop") || fileName.contains("wp")) {
-            fileInfo.setDetectedSubCategory("Wallpapers");
-        }
-        else if (fileName.contains("profile") || fileName.contains("avatar") ||
-                fileName.contains("headshot")) {
-            fileInfo.setDetectedSubCategory("Profiles");
-        }
-        else if (fileName.contains("icon") || fileName.contains("logo") ||
-                fileName.contains("favicon")) {
-            fileInfo.setDetectedSubCategory("Icons");
-        }
-        else if (fileName.contains("meme") || fileName.contains("funny") ||
-                fileName.contains("comic")) {
-            fileInfo.setDetectedSubCategory("Memes");
-        }
-        else if (fileName.matches(".*\\d{8}.*") || fileName.matches(".*\\d{4}-\\d{2}-\\d{2}.*") ||
-                fileName.matches(".*img_\\d+.*") || fileName.matches(".*dsc\\d+.*")) {
-            fileInfo.setDetectedSubCategory("Photos");
-        }
-        else {
-            fileInfo.setDetectedSubCategory("General");
-        }
-    }
-
-    /**
-     * 문서 서브카테고리 분석
-     */
-    private void analyzeDocumentSubCategory(FileInfo fileInfo, String fileName) {
-        if (fileName.contains("resume") || fileName.contains("cv") || fileName.contains("이력서")) {
-            fileInfo.setDetectedSubCategory("Resume");
-        }
-        else if (fileName.contains("invoice") || fileName.contains("receipt") ||
-                fileName.contains("bill") || fileName.contains("계산서") || fileName.contains("영수증")) {
-            fileInfo.setDetectedSubCategory("Financial");
-        }
-        else if (fileName.contains("manual") || fileName.contains("guide") ||
-                fileName.contains("instruction") || fileName.contains("설명서") || fileName.contains("매뉴얼")) {
-            fileInfo.setDetectedSubCategory("Manuals");
-        }
-        else if (fileName.contains("report") || fileName.contains("analysis") ||
-                fileName.contains("보고서") || fileName.contains("분석")) {
-            fileInfo.setDetectedSubCategory("Reports");
-        }
-        else if (fileName.contains("contract") || fileName.contains("agreement") ||
-                fileName.contains("계약") || fileName.contains("협약")) {
-            fileInfo.setDetectedSubCategory("Legal");
-        }
-        else if (fileName.contains("homework") || fileName.contains("assignment") ||
-                fileName.contains("과제") || fileName.contains("숙제")) {
-            fileInfo.setDetectedSubCategory("Educational");
-        }
-        else {
-            fileInfo.setDetectedSubCategory("General");
-        }
-    }
-
-    /**
-     * 비디오 서브카테고리 분석
-     */
-    private void analyzeVideoSubCategory(FileInfo fileInfo, String fileName) {
-        if (fileName.contains("tutorial") || fileName.contains("course") ||
-                fileName.contains("lesson") || fileName.contains("lecture") ||
-                fileName.contains("강의") || fileName.contains("튜토리얼")) {
-            fileInfo.setDetectedSubCategory("Educational");
-        }
-        else if (fileName.contains("movie") || fileName.contains("film") ||
-                fileName.contains("영화") || fileName.contains("cinema")) {
-            fileInfo.setDetectedSubCategory("Movies");
-        }
-        else if (fileName.contains("tv") || fileName.contains("episode") ||
-                fileName.contains("series") || fileName.contains("드라마") || fileName.contains("시리즈")) {
-            fileInfo.setDetectedSubCategory("TV Shows");
-        }
-        else if (fileName.contains("music") || fileName.contains("concert") ||
-                fileName.contains("뮤직비디오") || fileName.contains("콘서트")) {
-            fileInfo.setDetectedSubCategory("Music Videos");
-        }
-        else if (fileName.contains("clip") || fileName.contains("short") ||
-                fileName.contains("클립") || fileName.contains("쇼츠")) {
-            fileInfo.setDetectedSubCategory("Clips");
-        }
-        else {
-            fileInfo.setDetectedSubCategory("General");
-        }
-    }
-
-    /**
-     * 오디오 서브카테고리 분석
-     */
-    private void analyzeAudioSubCategory(FileInfo fileInfo, String fileName) {
-        if (fileName.contains("podcast") || fileName.contains("interview") ||
-                fileName.contains("팟캐스트") || fileName.contains("인터뷰")) {
-            fileInfo.setDetectedSubCategory("Podcasts");
-        }
-        else if (fileName.contains("audiobook") || fileName.contains("book") ||
-                fileName.contains("오디오북") || fileName.contains("책")) {
-            fileInfo.setDetectedSubCategory("Audiobooks");
-        }
-        else if (fileName.contains("music") || fileName.contains("song") ||
-                fileName.contains("음악") || fileName.contains("노래")) {
-            fileInfo.setDetectedSubCategory("Music");
-        }
-        else if (fileName.contains("voice") || fileName.contains("memo") ||
-                fileName.contains("음성") || fileName.contains("메모")) {
-            fileInfo.setDetectedSubCategory("Voice Memos");
-        }
-        else {
-            fileInfo.setDetectedSubCategory("General");
-        }
-    }
-
-    /**
-     * 코드 서브카테고리 분석
-     */
-    private void analyzeCodeSubCategory(FileInfo fileInfo, String fileName) {
-        String extension = fileInfo.getFileExtension().toLowerCase();
-
-        if (extension.matches("java|kt|scala")) {
-            fileInfo.setDetectedSubCategory("Java/Kotlin");
-        }
-        else if (extension.matches("py|pyw")) {
-            fileInfo.setDetectedSubCategory("Python");
-        }
-        else if (extension.matches("js|ts|jsx|tsx")) {
-            fileInfo.setDetectedSubCategory("JavaScript/TypeScript");
-        }
-        else if (extension.matches("html|css|scss|sass")) {
-            fileInfo.setDetectedSubCategory("Web");
-        }
-        else if (extension.matches("cpp|c|h|hpp")) {
-            fileInfo.setDetectedSubCategory("C/C++");
-        }
-        else if (extension.matches("go|rs|swift")) {
-            fileInfo.setDetectedSubCategory("Modern Languages");
-        }
-        else {
-            fileInfo.setDetectedSubCategory("General");
-        }
-    }
-
-    /**
-     * 파일명 패턴 분석
-     */
-    private void analyzeFileNamePatterns(FileInfo fileInfo) {
-        String fileName = fileInfo.getFileName();
-        List<String> keywords = fileInfo.getKeywords();
 
         // 날짜 패턴 추출
-        extractDatePatterns(fileName, keywords);
+        Pattern datePattern = Pattern.compile("(\\d{4})[\\-_](\\d{2})[\\-_](\\d{2})");
+        Matcher dateMatcher = datePattern.matcher(fileName);
 
-        // 버전 패턴 추출
-        extractVersionPatterns(fileName, keywords);
+        if (dateMatcher.find()) {
+            String year = dateMatcher.group(1);
+            String month = dateMatcher.group(2);
+            fileInfo.getKeywords().add("date:" + year + "-" + month);
+        }
 
-        // 단어 키워드 추출
-        extractWordKeywords(fileName, keywords);
+        // 키워드 추출 (단어 기반)
+        String[] words = fileName.replaceAll("[^a-zA-Z0-9가-힣\\s]", " ").split("\\s+");
+        for (String word : words) {
+            if (word.length() > 2 && !word.matches("\\d+")) {
+                fileInfo.getKeywords().add(word.toLowerCase());
+            }
+        }
 
-        // 제목 정리
+        // 제목 추출 (확장자 제거 후 정리)
         String title = fileName.substring(0, fileName.lastIndexOf('.') > 0 ?
                 fileName.lastIndexOf('.') : fileName.length());
-        title = title.replaceAll("[\\-_]", " ").trim();
+        title = title.replaceAll("[\\-_]", " ");
         fileInfo.setExtractedTitle(title);
     }
 
     /**
-     * 날짜 패턴 추출
+     * 세부 카테고리 분류
      */
-    private void extractDatePatterns(String fileName, List<String> keywords) {
-        // YYYY-MM-DD 형식
-        Pattern datePattern1 = Pattern.compile("(\\d{4})[\\-_](\\d{2})[\\-_](\\d{2})");
-        Matcher matcher1 = datePattern1.matcher(fileName);
-        if (matcher1.find()) {
-            keywords.add("date:" + matcher1.group(1) + "-" + matcher1.group(2) + "-" + matcher1.group(3));
-        }
+    private void classifyDetailedCategory(FileInfo fileInfo) {
+        String fileName = fileInfo.getFileName().toLowerCase();
+        String category = fileInfo.getDetectedCategory();
 
-        // YYYYMMDD 형식
-        Pattern datePattern2 = Pattern.compile("(\\d{8})");
-        Matcher matcher2 = datePattern2.matcher(fileName);
-        if (matcher2.find()) {
-            String dateStr = matcher2.group(1);
-            keywords.add("date:" + dateStr.substring(0, 4) + "-" +
-                    dateStr.substring(4, 6) + "-" + dateStr.substring(6, 8));
-        }
-    }
-
-    /**
-     * 버전 패턴 추출
-     */
-    private void extractVersionPatterns(String fileName, List<String> keywords) {
-        Pattern versionPattern = Pattern.compile("v(\\d+\\.\\d+(?:\\.\\d+)?)");
-        Matcher matcher = versionPattern.matcher(fileName.toLowerCase());
-        if (matcher.find()) {
-            keywords.add("version:" + matcher.group(1));
-        }
-    }
-
-    /**
-     * 단어 키워드 추출
-     */
-    private void extractWordKeywords(String fileName, List<String> keywords) {
-        // 특수문자 제거 후 단어 분리
-        String[] words = fileName.replaceAll("[^a-zA-Z0-9가-힣\\s]", " ").split("\\s+");
-
-        for (String word : words) {
-            if (word.length() > 2 && !isCommonWord(word.toLowerCase())) {
-                if (!keywords.contains(word.toLowerCase())) {
-                    keywords.add(word.toLowerCase());
-                }
+        if ("Images".equals(category)) {
+            if (fileName.contains("screenshot") || fileName.contains("screen shot")) {
+                fileInfo.setDetectedSubCategory("Screenshots");
+            } else if (fileName.contains("wallpaper") || fileName.contains("background")) {
+                fileInfo.setDetectedSubCategory("Wallpapers");
+            } else if (fileName.contains("meme") || fileName.contains("funny")) {
+                fileInfo.setDetectedSubCategory("Memes");
+            } else if (fileName.matches(".*\\d{8}.*") || fileName.matches(".*\\d{4}-\\d{2}-\\d{2}.*")) {
+                fileInfo.setDetectedSubCategory("Photos");
+            } else {
+                fileInfo.setDetectedSubCategory("General");
             }
+        } else if ("Documents".equals(category)) {
+            if (fileName.contains("resume") || fileName.contains("cv")) {
+                fileInfo.setDetectedSubCategory("Resume");
+            } else if (fileName.contains("invoice") || fileName.contains("receipt")) {
+                fileInfo.setDetectedSubCategory("Financial");
+            } else if (fileName.contains("manual") || fileName.contains("guide")) {
+                fileInfo.setDetectedSubCategory("Manuals");
+            } else if (fileName.contains("report")) {
+                fileInfo.setDetectedSubCategory("Reports");
+            } else {
+                fileInfo.setDetectedSubCategory("General");
+            }
+        } else if ("Videos".equals(category)) {
+            if (fileName.contains("tutorial") || fileName.contains("course")) {
+                fileInfo.setDetectedSubCategory("Educational");
+            } else if (fileName.contains("movie") || fileName.contains("film")) {
+                fileInfo.setDetectedSubCategory("Movies");
+            } else if (fileName.contains("tv") || fileName.contains("episode")) {
+                fileInfo.setDetectedSubCategory("TV Shows");
+            } else {
+                fileInfo.setDetectedSubCategory("General");
+            }
+        } else {
+            fileInfo.setDetectedSubCategory("General");
         }
     }
 
     /**
-     * 일반적인 단어인지 확인 (키워드에서 제외)
+     * 기본 신뢰도 계산
      */
-    private boolean isCommonWord(String word) {
-        String[] commonWords = {"the", "and", "for", "are", "but", "not", "you", "all",
-                "can", "had", "her", "was", "one", "our", "out", "day",
-                "get", "has", "him", "his", "how", "man", "new", "now",
-                "old", "see", "two", "way", "who", "boy", "did", "its",
-                "let", "put", "say", "she", "too", "use", "file", "document"};
+    private void calculateBasicConfidence(FileInfo fileInfo) {
+        double confidence = 0.5; // 기본 신뢰도
 
-        return Arrays.asList(commonWords).contains(word);
+        // 확장자 기반 신뢰도
+        if (!fileInfo.getFileExtension().isEmpty()) {
+            confidence += 0.3;
+        }
+
+        // 파일명에 의미있는 키워드가 있으면 신뢰도 증가
+        if (fileInfo.getKeywords().size() > 2) {
+            confidence += 0.1;
+        }
+
+        // 세부 카테고리가 있으면 신뢰도 증가
+        if (!"General".equals(fileInfo.getDetectedSubCategory())) {
+            confidence += 0.1;
+        }
+
+        fileInfo.setConfidenceScore(Math.min(confidence, 1.0));
     }
 
     /**
-     * 파일 내용 분석 여부 판단
+     * AI로 분석 향상
      */
-    private boolean shouldAnalyzeContent(FileInfo fileInfo) {
-        // 파일 크기 제한
-        long maxSize = currentConfig.getMaxFileSizeForAnalysis() * 1024 * 1024L; // MB to bytes
-        if (fileInfo.getFileSize() > maxSize) {
+    private void enhanceWithAI(FileInfo fileInfo) {
+        try {
+            if (!isAIAnalysisAvailable()) {
+                return;
+            }
+
+            // AI 분석이 가치 있는 파일인지 확인
+            if (!isAIAnalysisWorthwhile(fileInfo)) {
+                return;
+            }
+
+            System.out.println("[AI] 🤖 AI 분석 시작: " + fileInfo.getFileName());
+
+            // 실제 AI 분석 수행
+            String aiResponse = aiAnalyzer.analyzeFile(fileInfo);
+
+            if (aiResponse != null) {
+                boolean applied = aiAnalyzer.applyAIAnalysis(fileInfo, aiResponse);
+
+                if (applied) {
+                    // AI 분석이 성공한 경우 신뢰도 향상
+                    double currentScore = fileInfo.getConfidenceScore();
+                    double enhancedScore = Math.min(currentScore + 0.2, 1.0);
+                    fileInfo.setConfidenceScore(enhancedScore);
+
+                    System.out.println("[AI] ✅ AI 분석 완료: " + fileInfo.getFileName() +
+                            " (향상된 신뢰도: " + String.format("%.2f", fileInfo.getConfidenceScore()) + ")");
+
+                    // AI 분석 마커 추가
+                    if (fileInfo.getKeywords() == null) {
+                        fileInfo.setKeywords(new ArrayList<>());
+                    }
+                    if (!fileInfo.getKeywords().contains("ai-analyzed")) {
+                        fileInfo.getKeywords().add("ai-analyzed");
+                    }
+                } else {
+                    System.out.println("[AI] ⚠️ AI 분석 응답 파싱 실패: " + fileInfo.getFileName());
+                }
+            } else {
+                System.out.println("[AI] ⚠️ AI 분석 응답 없음: " + fileInfo.getFileName());
+            }
+
+        } catch (Exception e) {
+            System.err.println("[ERROR] AI 분석 중 오류: " + fileInfo.getFileName() + " - " + e.getMessage());
+            // AI 분석 실패는 전체 분석을 중단하지 않음
+        }
+    }
+
+    /**
+     * AI 분석이 가치 있는 파일 타입인지 확인
+     */
+    private boolean isAIAnalysisWorthwhile(FileInfo fileInfo) {
+        if (fileInfo == null) {
             return false;
         }
 
-        // 내용 분석이 유용한 파일 타입
         String extension = fileInfo.getFileExtension().toLowerCase();
-        return extension.matches("txt|log|md|readme|json|xml|csv");
+
+        // 문서 파일: AI가 내용을 분석해서 정확한 분류 가능
+        if (extension.matches("pdf|doc|docx|txt|rtf|odt|ppt|pptx|xls|xlsx")) {
+            return true;
+        }
+
+        // 이미지 파일: 스크린샷, 사진 등 구분 가능
+        if (extension.matches("jpg|jpeg|png|gif|bmp|webp|tiff")) {
+            return true;
+        }
+
+        // 비디오 파일: 제목으로 콘텐츠 유형 판단 가능
+        if (extension.matches("mp4|avi|mkv|mov|wmv|flv|webm")) {
+            return true;
+        }
+
+        // 코드 파일: 프로젝트 유형이나 언어별 분류 가능
+        if (extension.matches("java|py|js|html|css|cpp|c|h|php|rb|go|rs")) {
+            return true;
+        }
+
+        // 기타 확장자가 모호한 경우
+        if (extension.isEmpty() || extension.equals("tmp") ||
+                extension.equals("dat") || extension.equals("unknown")) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
-     * 파일 내용 분석
+     * 추천 경로 결정
      */
-    private void analyzeFileContent(FileInfo fileInfo) {
-        try {
-            String extension = fileInfo.getFileExtension().toLowerCase();
+    private void determineSuggestedPath(FileInfo fileInfo) {
+        AppConfig config = configService.getCurrentConfig();
+        String basePath = config.getOrganizationRootFolder();
+        String category = fileInfo.getDetectedCategory();
+        String subCategory = fileInfo.getDetectedSubCategory();
 
-            if ("txt".equals(extension) || "log".equals(extension) || "md".equals(extension)) {
-                String content = Files.readString(Paths.get(fileInfo.getFilePath()));
-                analyzeTextContent(fileInfo, content);
-            }
-            // 추후 PDF, DOC 등은 별도의 라이브러리 추가 가능
+        StringBuilder pathBuilder = new StringBuilder(basePath);
+        pathBuilder.append(File.separator).append(category);
 
-        } catch (Exception e) {
-            System.err.println("[WARNING] 내용 분석 실패: " + fileInfo.getFileName() + " - " + e.getMessage());
-        }
-    }
-
-    /**
-     * 텍스트 내용 분석
-     */
-    private void analyzeTextContent(FileInfo fileInfo, String content) {
-        if (content == null || content.trim().isEmpty()) {
-            return;
-        }
-
-        // 첫 200자를 설명으로 사용
-        String description = content.substring(0, Math.min(content.length(), 200)).trim();
-        fileInfo.setDescription(description);
-
-        // 간단한 키워드 추출
-        String[] words = content.toLowerCase().split("\\s+");
-        List<String> keywords = fileInfo.getKeywords();
-
-        for (String word : words) {
-            if (word.length() > 4 && !isCommonWord(word) && keywords.size() < 15) {
-                if (!keywords.contains(word)) {
-                    keywords.add(word);
-                }
-            }
-        }
-    }
-
-    /**
-     * 기본 신뢰도 점수 계산 (AI 분석 전)
-     */
-    private void calculateBasicConfidenceScore(FileInfo fileInfo) {
-        double score = 0.0;
-
-        // 확장자 기반 점수 (기본)
-        if (!fileInfo.getFileExtension().isEmpty()) {
-            score += 0.3;
-        }
-
-        // 카테고리 분류 점수
-        if (fileInfo.getDetectedCategory() != null && !fileInfo.getDetectedCategory().equals("Others")) {
-            score += 0.4;
-        }
-
-        // 서브카테고리 분류 점수
-        if (fileInfo.getDetectedSubCategory() != null && !fileInfo.getDetectedSubCategory().equals("General")) {
-            score += 0.2;
-        }
-
-        // 키워드 추출 점수
-        if (fileInfo.getKeywords() != null && !fileInfo.getKeywords().isEmpty()) {
-            score += 0.1;
-        }
-
-        fileInfo.setConfidenceScore(Math.min(score, 1.0));
-    }
-
-    /**
-     * 최종 신뢰도 점수 재계산 (AI 분석 후)
-     */
-    private void calculateFinalConfidenceScore(FileInfo fileInfo) {
-        // AI 분석이 적용된 경우 신뢰도는 이미 조정됨
-        if (fileInfo.getKeywords() != null && fileInfo.getKeywords().contains("ai-analyzed")) {
-            // AI 분석 결과가 있으면 추가 보너스
-            double currentScore = fileInfo.getConfidenceScore();
-            fileInfo.setConfidenceScore(Math.min(currentScore + 0.05, 1.0));
-        }
-    }
-
-    /**
-     * 추천 경로 생성
-     */
-    private void generateSuggestedPath(FileInfo fileInfo) {
-        StringBuilder pathBuilder = new StringBuilder();
-
-        // 루트 폴더
-        pathBuilder.append(currentConfig.getOrganizationRootFolder());
-
-        // 카테고리 폴더
-        if (fileInfo.getDetectedCategory() != null) {
-            pathBuilder.append(File.separator).append(fileInfo.getDetectedCategory());
-        }
-
-        // 서브카테고리 폴더
-        if (fileInfo.getDetectedSubCategory() != null &&
-                !fileInfo.getDetectedSubCategory().equals("General")) {
-            pathBuilder.append(File.separator).append(fileInfo.getDetectedSubCategory());
+        if (subCategory != null && !subCategory.isEmpty() && !"General".equals(subCategory)) {
+            pathBuilder.append(File.separator).append(subCategory);
         }
 
         // 날짜별 정리 (설정에 따라)
-        if (currentConfig.isOrganizeByDate()) {
+        if (config.isOrganizeByDate()) {
             LocalDateTime fileDate = fileInfo.getModifiedDate();
             pathBuilder.append(File.separator)
                     .append(fileDate.getYear())
@@ -780,34 +681,32 @@ public class FileAnalysisService {
     }
 
     /**
-     * 설정 새로고침
+     * AI 분석기 상태 확인
      */
-    public void refreshConfig() {
-        this.currentConfig = configService.getCurrentConfig();
-        initializeAI();
-        System.out.println("[설정] 파일 분석 서비스 설정 새로고침 완료");
+    public boolean isAIEnabled() {
+        return aiAnalyzer != null && aiAnalyzer.isEnabled();
     }
 
     /**
-     * AI 분석기 상태 확인
+     * 배치 AI 분석
      */
-    public boolean isAIAnalysisAvailable() {
-        return aiAnalyzer.isEnabled();
+    public Map<String, String> performBatchAIAnalysis(List<FileInfo> files) {
+        if (!isAIAnalysisAvailable()) {
+            System.out.println("[INFO] AI 분석이 비활성화되어 있습니다.");
+            return new HashMap<>();
+        }
+
+        return aiAnalyzer.analyzeBatch(files);
     }
 
     /**
      * AI 설정 요약 정보
      */
     public String getAIConfigSummary() {
-        return aiAnalyzer.getConfigSummary();
-    }
-
-    /**
-     * 분석 통계 정보
-     */
-    public String getAnalysisStats() {
-        return String.format("파일 분석 서비스 - AI 분석: %s",
-                isAIAnalysisAvailable() ? "활성" : "비활성");
+        if (aiAnalyzer != null) {
+            return aiAnalyzer.getConfigSummary();
+        }
+        return "AI 분석기가 초기화되지 않았습니다.";
     }
 
     /**
