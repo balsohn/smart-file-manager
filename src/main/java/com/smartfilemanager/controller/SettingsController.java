@@ -4,6 +4,7 @@ import com.smartfilemanager.model.AppConfig;
 import com.smartfilemanager.service.ConfigService;
 import com.smartfilemanager.ui.ThemeManager;
 import com.smartfilemanager.ui.UIFactory;
+import com.smartfilemanager.util.StartupManager;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -253,6 +254,69 @@ public class SettingsController implements Initializable {
     /**
      * 이벤트 핸들러 설정
      */
+    /**
+     * Windows 시작프로그램 등록/해제 처리
+     */
+    private void handleStartupToggle(boolean enable) {
+        if (!StartupManager.isSupported()) {
+            UIFactory.showInfoDialog("❌ 지원되지 않음",
+                    "Windows 시작프로그램 기능은 Windows에서만 지원됩니다.");
+            startWithWindowsCheckBox.setSelected(false);
+            return;
+        }
+
+        try {
+            boolean success;
+
+            if (enable) {
+                // 시작프로그램 등록
+                String executablePath = StartupManager.getCurrentExecutablePath();
+
+                if (executablePath == null) {
+                    throw new Exception("실행 파일 경로를 확인할 수 없습니다");
+                }
+
+                success = StartupManager.register(executablePath);
+
+                if (success) {
+                    UIFactory.showInfoDialog("✅ 등록 완료",
+                            "Windows 시작 시 Smart File Manager가 자동으로 실행됩니다.\n\n" +
+                                    "💡 팁: 시스템 트레이로 시작하려면 '트레이로 최소화' 옵션도 활성화하세요.");
+                    System.out.println("[SUCCESS] 시작프로그램 등록 완료");
+                } else {
+                    throw new Exception("시작프로그램 등록에 실패했습니다");
+                }
+
+            } else {
+                // 시작프로그램 해제
+                success = StartupManager.unregister();
+
+                if (success) {
+                    UIFactory.showInfoDialog("✅ 해제 완료",
+                            "Windows 시작프로그램에서 제거되었습니다.\n" +
+                                    "이제 시스템 시작 시 자동으로 실행되지 않습니다.");
+                    System.out.println("[SUCCESS] 시작프로그램 해제 완료");
+                } else {
+                    throw new Exception("시작프로그램 해제에 실패했습니다");
+                }
+            }
+
+            // 성공 시 체크박스 상태 유지
+            startWithWindowsCheckBox.setSelected(enable);
+
+        } catch (Exception e) {
+            System.err.println("[ERROR] 시작프로그램 설정 실패: " + e.getMessage());
+
+            // 실패 시 이전 상태로 되돌리기
+            startWithWindowsCheckBox.setSelected(!enable);
+
+            UIFactory.showInfoDialog("❌ 설정 실패",
+                    "시작프로그램 설정 중 오류가 발생했습니다:\n\n" +
+                            e.getMessage() + "\n\n" +
+                            "💡 관리자 권한으로 실행하거나 나중에 다시 시도해보세요.");
+        }
+    }
+
     private void setupEventHandlers() {
         // 폴더 선택 버튼들
         browseScanFolderButton.setOnAction(e -> handleBrowseScanFolder());
@@ -279,6 +343,29 @@ public class SettingsController implements Initializable {
             boolean autoResolve = autoResolveDuplicatesCheckBox.isSelected();
             duplicateStrategyComboBox.setDisable(!autoResolve);
         });
+
+        // Windows 시작프로그램 체크박스 이벤트 추가
+        startWithWindowsCheckBox.setOnAction(e -> {
+            boolean shouldStart = startWithWindowsCheckBox.isSelected();
+            handleStartupToggle(shouldStart);
+        });
+
+        // 테마 변경 이벤트
+        themeComboBox.setOnAction(e -> {
+            String selectedTheme = themeComboBox.getValue();
+            if (selectedTheme != null) {
+                handleThemeChange();
+            }
+        });
+
+        // 자동 정리 체크박스 이벤트
+        autoOrganizeCheckBox.setOnAction(e -> {
+            boolean autoEnabled = autoOrganizeCheckBox.isSelected();
+            realTimeMonitoringCheckBox.setDisable(!autoEnabled);
+            if (!autoEnabled) {
+                realTimeMonitoringCheckBox.setSelected(false);
+            }
+        });
     }
 
     /**
@@ -295,6 +382,17 @@ public class SettingsController implements Initializable {
 
         // AI 분석이 비활성화되어 있으면 API 키 필드도 비활성화
         aiApiKeyField.setDisable(!enableAIAnalysisCheckBox.isSelected());
+
+        // 시작프로그램 기능 사용 가능 여부에 따른 UI 설정
+        if (!StartupManager.isSupported()) {
+            startWithWindowsCheckBox.setDisable(true);
+            startWithWindowsCheckBox.setTooltip(new Tooltip("Windows에서만 지원되는 기능입니다"));
+            System.out.println("[INFO] 시작프로그램 기능 비활성화 (Windows 아님)");
+        } else {
+            startWithWindowsCheckBox.setDisable(false);
+            startWithWindowsCheckBox.setTooltip(new Tooltip("Windows 시작 시 자동으로 실행"));
+            System.out.println("[INFO] 시작프로그램 기능 활성화");
+        }
     }
 
     /**
@@ -339,6 +437,27 @@ public class SettingsController implements Initializable {
         minimizeToTrayCheckBox.setSelected(config.isMinimizeToTray());
         startWithWindowsCheckBox.setSelected(config.isStartWithWindows());
         debugModeCheckBox.setSelected(config.isDebugMode());
+
+        // Windows 시작프로그램 설정 로드
+        if (StartupManager.isSupported()) {
+            // 설정값과 실제 등록 상태를 모두 확인
+            boolean configValue = config.isStartWithWindows();
+            boolean actuallyRegistered = StartupManager.isRegistered();
+
+            // 설정과 실제 상태가 다르면 실제 상태로 동기화
+            if (configValue != actuallyRegistered) {
+                System.out.println("[WARNING] 시작프로그램 설정 불일치 - 실제 상태로 동기화");
+                config.setStartWithWindows(actuallyRegistered);
+            }
+
+            startWithWindowsCheckBox.setSelected(actuallyRegistered);
+            startWithWindowsCheckBox.setDisable(false);
+        } else {
+            // Windows가 아닌 경우 비활성화
+            startWithWindowsCheckBox.setSelected(false);
+            startWithWindowsCheckBox.setDisable(true);
+            startWithWindowsCheckBox.setTooltip(new Tooltip("Windows에서만 지원되는 기능입니다"));
+        }
     }
 
     /**
@@ -405,6 +524,13 @@ public class SettingsController implements Initializable {
         config.setMinimizeToTray(minimizeToTrayCheckBox.isSelected());
         config.setStartWithWindows(startWithWindowsCheckBox.isSelected());
         config.setDebugMode(debugModeCheckBox.isSelected());
+
+        // Windows 시작프로그램 설정 저장
+        if (StartupManager.isSupported()) {
+            config.setStartWithWindows(startWithWindowsCheckBox.isSelected());
+        } else {
+            config.setStartWithWindows(false);
+        }
 
         return config;
     }
@@ -492,6 +618,18 @@ public class SettingsController implements Initializable {
                         "입력된 설정이 유효하지 않습니다.\n" +
                                 "폴더 경로와 숫자 값들을 확인해주세요.");
                 return;
+            }
+
+            // 시작프로그램 설정 동기화 검증
+            if (StartupManager.isSupported()) {
+                boolean configWantsStartup = newConfig.isStartWithWindows();
+                boolean actuallyRegistered = StartupManager.isRegistered();
+
+                if (configWantsStartup != actuallyRegistered) {
+                    System.out.println("[WARNING] 시작프로그램 설정 불일치 감지 - 자동 동기화");
+                    // 실제 상태에 맞춰 설정 업데이트
+                    newConfig.setStartWithWindows(actuallyRegistered);
+                }
             }
 
             // 설정 저장

@@ -63,6 +63,43 @@
 
                                 <Separator />
 
+                                <!-- 🔥 시작 및 종료 설정 - 여기서만 정의 -->
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="🚀 시작 및 종료" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <CheckBox fx:id="startWithWindowsCheckBox" text="Windows 시작 시 자동 실행">
+                                            <tooltip>
+                                                <Tooltip text="컴퓨터 시작 시 Smart File Manager를 자동으로 실행합니다" />
+                                            </tooltip>
+                                        </CheckBox>
+
+                                        <CheckBox fx:id="minimizeToTrayCheckBox" text="시스템 트레이로 최소화">
+                                            <tooltip>
+                                                <Tooltip text="창을 닫을 때 트레이로 최소화됩니다" />
+                                            </tooltip>
+                                        </CheckBox>
+
+                                        <CheckBox fx:id="showNotificationsCheckBox" text="알림 표시">
+                                            <tooltip>
+                                                <Tooltip text="파일 정리 완료 등의 알림을 표시합니다" />
+                                            </tooltip>
+                                        </CheckBox>
+
+                                        <CheckBox fx:id="debugModeCheckBox" text="디버그 모드 (개발자용)">
+                                            <tooltip>
+                                                <Tooltip text="상세한 로그를 콘솔에 출력합니다" />
+                                            </tooltip>
+                                        </CheckBox>
+                                    </children>
+                                </VBox>
+
+                                <Separator />
+
                                 <!-- 자동 기능 설정 -->
                                 <VBox spacing="10.0">
                                     <children>
@@ -74,7 +111,7 @@
 
                                         <CheckBox fx:id="autoOrganizeCheckBox" text="자동 파일 정리 활성화" />
                                         <CheckBox fx:id="realTimeMonitoringCheckBox" text="실시간 폴더 감시" />
-                                        <CheckBox fx:id="showNotificationsCheckBox" text="알림 표시" />
+                                        <!-- 🔥 여기서 showNotificationsCheckBox 중복 제거됨 -->
                                     </children>
                                 </VBox>
 
@@ -238,9 +275,6 @@
                                             </children>
                                         </HBox>
 
-                                        <CheckBox fx:id="minimizeToTrayCheckBox" text="시스템 트레이로 최소화" />
-                                        <CheckBox fx:id="startWithWindowsCheckBox" text="Windows 시작 시 자동 실행" />
-                                        <CheckBox fx:id="debugModeCheckBox" text="디버그 모드 활성화" />
                                     </children>
                                 </VBox>
                             </VBox>
