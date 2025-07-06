@@ -1,0 +1,503 @@
+/* ===================================================================
+   Smart File Manager - Statistics Screen Styles
+   향상된 통계 화면을 위한 전용 스타일시트
+=================================================================== */
+
+/* 헤더 섹션 */
+.header-section {
+    -fx-background-color: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 0 0 1 0;
+}
+
+.header-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+/* 통계 카드 스타일 */
+.stats-cards {
+    -fx-spacing: 15;
+}
+
+.stat-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #e1e8ed;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 20 15 15 15;
+    -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 4, 0, 0, 2);
+}
+
+.stat-card:hover {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #007bff;
+    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.2), 8, 0, 0, 3);
+    -fx-cursor: hand;
+}
+
+.stat-number {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #007bff;
+}
+
+.stat-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6c757d;
+    -fx-padding: 5 0 0 0;
+}
+
+/* 진행률 바 */
+.progress-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #495057;
+    -fx-padding: 0 0 8 0;
+}
+
+.progress-bar {
+    -fx-progress-color: linear-gradient(to right, #28a745, #20c997);
+    -fx-background-color: #e9ecef;
+    -fx-background-radius: 10;
+    -fx-pref-height: 12;
+}
+
+.progress-bar .bar {
+    -fx-background-radius: 10;
+    -fx-background-insets: 0;
+}
+
+/* 탭 패널 */
+.statistics-tabs {
+    -fx-tab-min-width: 120;
+    -fx-tab-max-width: 160;
+}
+
+.statistics-tabs .tab-header-area {
+    -fx-padding: 0 0 10 0;
+}
+
+.statistics-tabs .tab {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1 1 0 1;
+    -fx-border-radius: 8 8 0 0;
+    -fx-background-radius: 8 8 0 0;
+}
+
+.statistics-tabs .tab:selected {
+    -fx-background-color: white;
+    -fx-border-color: #007bff;
+    -fx-border-width: 2 2 0 2;
+}
+
+.statistics-tabs .tab-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
+
+/* 섹션 제목들 */
+.section-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+    -fx-padding: 0 0 10 0;
+}
+
+.subsection-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #495057;
+    -fx-padding: 0 0 8 0;
+}
+
+/* 차트 컨테이너 */
+.chart-container {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #e1e8ed;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 6, 0, 0, 2);
+}
+
+.chart-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #2c3e50;
+    -fx-padding: 0 0 15 0;
+}
+
+/* 파이 차트 커스터마이징 */
+.chart-pie-label {
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+}
+
+.chart-pie-label-line {
+    -fx-stroke-width: 1.5;
+}
+
+/* 바 차트 스타일 */
+.chart-bar {
+    -fx-background-radius: 4 4 0 0;
+}
+
+.default-color0.chart-bar { -fx-bar-fill: #007bff; }
+.default-color1.chart-bar { -fx-bar-fill: #28a745; }
+.default-color2.chart-bar { -fx-bar-fill: #ffc107; }
+.default-color3.chart-bar { -fx-bar-fill: #dc3545; }
+.default-color4.chart-bar { -fx-bar-fill: #6f42c1; }
+.default-color5.chart-bar { -fx-bar-fill: #20c997; }
+.default-color6.chart-bar { -fx-bar-fill: #fd7e14; }
+.default-color7.chart-bar { -fx-bar-fill: #e83e8c; }
+
+/* 라인 차트 스타일 */
+.chart-line-symbol {
+    -fx-background-color: #007bff;
+    -fx-background-radius: 6;
+    -fx-padding: 6;
+}
+
+.chart-series-line {
+    -fx-stroke: #007bff;
+    -fx-stroke-width: 3;
+}
+
+/* 히스토리 테이블 */
+.history-table {
+    -fx-background-color: white;
+    -fx-border-color: #e1e8ed;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+
+.history-table .column-header {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dee2e6;
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+    -fx-text-fill: #495057;
+}
+
+.history-table .table-row-cell {
+    -fx-border-color: transparent transparent #f1f3f4 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.history-table .table-row-cell:hover {
+    -fx-background-color: #f8f9fa;
+}
+
+.history-table .table-row-cell:selected {
+    -fx-background-color: #e3f2fd;
+    -fx-text-fill: #1976d2;
+}
+
+/* 분석 섹션들 */
+.analysis-section {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #e1e8ed;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 25;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 4, 0, 0, 1);
+}
+
+.analysis-details {
+    -fx-background-color: #f8f9fa;
+    -fx-background-radius: 8;
+    -fx-padding: 20;
+    -fx-border-color: #e9ecef;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+
+.analysis-summary {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #495057;
+    -fx-font-size: 13px;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* 트리뷰 스타일 */
+.tree-container {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #e1e8ed;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 15;
+}
+
+.tree-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.tree-view .tree-cell {
+    -fx-font-size: 13px;
+    -fx-padding: 3 5 3 5;
+}
+
+.tree-view .tree-cell:hover {
+    -fx-background-color: #f0f7ff;
+}
+
+.tree-view .tree-cell:selected {
+    -fx-background-color: #e3f2fd;
+    -fx-text-fill: #1976d2;
+}
+
+/* 폴더 통계 영역 */
+.folder-stats {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #e1e8ed;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 15;
+}
+
+.selected-folder-info {
+    -fx-background-color: #f8f9fa;
+    -fx-background-radius: 8;
+    -fx-padding: 15;
+    -fx-border-color: #e9ecef;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+
+.folder-name {
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #2c3e50;
+}
+
+/* 효율성 분석 */
+.efficiency-analysis {
+    -fx-background-color: linear-gradient(to bottom right, #fff, #f8f9fa);
+    -fx-background-radius: 12;
+    -fx-border-color: #e1e8ed;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 25;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 6, 0, 0, 2);
+}
+
+.suggestion-item {
+    -fx-font-size: 13px;
+    -fx-text-fill: #495057;
+    -fx-padding: 2 0 2 0;
+}
+
+/* 시스템 정보 */
+.system-info {
+    -fx-background-color: #f8f9fa;
+    -fx-background-radius: 12;
+    -fx-border-color: #e9ecef;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 20;
+}
+
+/* 타임라인 통계 */
+.timeline-stats {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #e1e8ed;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 20;
+}
+
+/* 액션 바 */
+.action-bar {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1 0 0 0;
+}
+
+.action-bar .button {
+    -fx-min-width: 120;
+    -fx-pref-height: 32;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
+
+/* 버튼 스타일 */
+.primary-button {
+    -fx-background-color: linear-gradient(to bottom, #007bff, #0056b3);
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.3), 4, 0, 0, 2);
+}
+
+.primary-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #0056b3, #004085);
+    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.4), 6, 0, 0, 3);
+}
+
+.secondary-button {
+    -fx-background-color: linear-gradient(to bottom, #6c757d, #545b62);
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+}
+
+.secondary-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #545b62, #383d41);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1200px) {
+    .stats-cards {
+        -fx-spacing: 10;
+    }
+
+    .stat-card {
+        -fx-padding: 15 10 10 10;
+    }
+
+    .stat-number {
+        -fx-font-size: 24px;
+    }
+
+    .chart-container {
+        -fx-padding: 15;
+    }
+}
+
+@media (max-width: 800px) {
+    .header-title {
+        -fx-font-size: 20px;
+    }
+
+    .section-title {
+        -fx-font-size: 18px;
+    }
+
+    .subsection-title {
+        -fx-font-size: 14px;
+    }
+}
+
+/* 다크 테마 지원 */
+.root:dark-mode .header-section {
+    -fx-background-color: linear-gradient(to bottom, #2d3748, #1a202c);
+    -fx-border-color: #4a5568;
+}
+
+.root:dark-mode .header-title {
+    -fx-text-fill: #e2e8f0;
+}
+
+.root:dark-mode .stat-card {
+    -fx-background-color: #2d3748;
+    -fx-border-color: #4a5568;
+}
+
+.root:dark-mode .stat-card:hover {
+    -fx-background-color: #374151;
+    -fx-border-color: #60a5fa;
+}
+
+.root:dark-mode .stat-number {
+    -fx-text-fill: #60a5fa;
+}
+
+.root:dark-mode .stat-label {
+    -fx-text-fill: #a0aec0;
+}
+
+.root:dark-mode .chart-container {
+    -fx-background-color: #2d3748;
+    -fx-border-color: #4a5568;
+}
+
+.root:dark-mode .section-title {
+    -fx-text-fill: #e2e8f0;
+}
+
+.root:dark-mode .subsection-title {
+    -fx-text-fill: #cbd5e0;
+}
+
+.root:dark-mode .history-table {
+    -fx-background-color: #2d3748;
+    -fx-border-color: #4a5568;
+}
+
+.root:dark-mode .history-table .column-header {
+    -fx-background-color: #374151;
+    -fx-border-color: #4a5568;
+    -fx-text-fill: #e2e8f0;
+}
+
+.root:dark-mode .history-table .table-row-cell:hover {
+    -fx-background-color: #374151;
+}
+
+.root:dark-mode .action-bar {
+    -fx-background-color: #2d3748;
+    -fx-border-color: #4a5568;
+}
+
+/* 애니메이션 효과 */
+.stat-card {
+    -fx-scale-x: 1;
+    -fx-scale-y: 1;
+    -fx-transition: -fx-scale-x 0.2s ease, -fx-scale-y 0.2s ease;
+}
+
+.stat-card:hover {
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.chart-container {
+    -fx-opacity: 1;
+    -fx-transition: -fx-opacity 0.3s ease;
+}
+
+.progress-bar .bar {
+    -fx-transition: -fx-progress 0.5s ease;
+}
+
+/* 스크롤바 스타일 */
+.scroll-pane .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 12;
+}
+
+.scroll-pane .scroll-bar:vertical .track {
+    -fx-background-color: #f1f3f4;
+    -fx-background-radius: 6;
+}
+
+.scroll-pane .scroll-bar:vertical .thumb {
+    -fx-background-color: #c1c8cd;
+    -fx-background-radius: 6;
+}
+
+.scroll-pane .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #a8b2b9;
+}
+
+/* 툴팁 스타일 */
+.tooltip {
+    -fx-background-color: #2c3e50;
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-font-size: 12px;
+    -fx-padding: 8 12 8 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 0, 2);
+}

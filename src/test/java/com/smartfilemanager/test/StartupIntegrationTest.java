@@ -1,7 +1,8 @@
-package com.smartfilemanager.util;
+package com.smartfilemanager.test;
 
 import com.smartfilemanager.model.AppConfig;
 import com.smartfilemanager.service.ConfigService;
+import com.smartfilemanager.util.StartupManager;
 
 /**
  * Windows 시작프로그램 기능 통합 테스트

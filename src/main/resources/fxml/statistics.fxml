@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.smartfilemanager.controller.StatisticsController">
+
+    <!-- 상단 헤더 -->
+    <top>
+        <VBox styleClass="header-section">
+            <padding>
+                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+            </padding>
+
+            <HBox alignment="CENTER_LEFT" spacing="15.0">
+                <Label styleClass="header-title" text="📊 파일 정리 통계" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button styleClass="primary-button" text="📊 보고서 내보내기" />
+                <Button styleClass="secondary-button" text="🔄 새로고침" />
+            </HBox>
+
+            <!-- 빠른 통계 카드 -->
+            <HBox spacing="15.0" styleClass="stats-cards">
+                <VBox.margin>
+                    <Insets top="15.0" />
+                </VBox.margin>
+
+                <!-- 총 파일 카드 -->
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                    <Label styleClass="stat-number" fx:id="totalFilesLabel" text="0" />
+                    <Label styleClass="stat-label" text="총 파일 수" />
+                </VBox>
+
+                <!-- 정리된 파일 카드 -->
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                    <Label styleClass="stat-number" fx:id="organizedFilesLabel" text="0" />
+                    <Label styleClass="stat-label" text="정리된 파일" />
+                </VBox>
+
+                <!-- 절약된 공간 카드 -->
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                    <Label styleClass="stat-number" fx:id="spaceSavedLabel" text="0 B" />
+                    <Label styleClass="stat-label" text="절약된 공간" />
+                </VBox>
+
+                <!-- 중복 파일 카드 -->
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                    <Label styleClass="stat-number" fx:id="duplicatesFoundLabel" text="0" />
+                    <Label styleClass="stat-label" text="중복 파일 제거" />
+                </VBox>
+            </HBox>
+
+            <!-- 진행률 바 -->
+            <VBox>
+                <VBox.margin>
+                    <Insets top="15.0" />
+                </VBox.margin>
+                <Label styleClass="progress-label" text="전체 정리 진행률" />
+                <ProgressBar fx:id="organizationProgress" prefWidth="200.0" progress="0.0" />
+            </VBox>
+        </VBox>
+    </top>
+
+    <!-- 메인 콘텐츠 - 탭 패널 -->
+    <center>
+        <TabPane fx:id="statisticsTabPane" styleClass="statistics-tabs" tabClosingPolicy="UNAVAILABLE">
+
+            <!-- 카테고리 분석 탭 -->
+            <Tab text="📂 카테고리 분석">
+                <ScrollPane fitToHeight="true" fitToWidth="true">
+                    <VBox spacing="20.0">
+                        <padding>
+                            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                        </padding>
+
+                        <!-- 상단 제목 -->
+                        <Label styleClass="section-title" text="파일 카테고리별 분포 분석" />
+
+                        <!-- 차트 컨테이너 -->
+                        <HBox spacing="20.0" VBox.vgrow="ALWAYS">
+
+                            <!-- 파이 차트 -->
+                            <VBox styleClass="chart-container" HBox.hgrow="ALWAYS">
+                                <Label styleClass="chart-title" text="카테고리별 비율" />
+                                <PieChart fx:id="categoryPieChart" prefHeight="350.0" VBox.vgrow="ALWAYS" />
+                            </VBox>
+
+                            <!-- 바 차트 -->
+                            <VBox styleClass="chart-container" HBox.hgrow="ALWAYS">
+                                <Label styleClass="chart-title" text="카테고리별 파일 수" />
+                                <BarChart fx:id="categoryBarChart" prefHeight="350.0" VBox.vgrow="ALWAYS">
+                                    <xAxis>
+                                        <CategoryAxis fx:id="categoryAxis" />
+                                    </xAxis>
+                                    <yAxis>
+                                        <NumberAxis fx:id="categoryNumberAxis" />
+                                    </yAxis>
+                                </BarChart>
+                            </VBox>
+                        </HBox>
+
+                        <!-- 상세 분석 정보 -->
+                        <VBox styleClass="analysis-details">
+                            <Label styleClass="subsection-title" text="📈 분석 요약" />
+                            <TextArea editable="false" prefRowCount="4" styleClass="analysis-summary"
+                                      text="카테고리별 분석 결과가 여기에 표시됩니다.&#10;가장 많은 파일 타입, 권장사항 등을 확인할 수 있습니다." />
+                        </VBox>
+                    </VBox>
+                </ScrollPane>
+            </Tab>
+
+            <!-- 시간대별 분석 탭 -->
+            <Tab text="⏰ 시간대별 분석">
+                <VBox spacing="20.0">
+                    <padding>
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                    </padding>
+
+                    <!-- 컨트롤 영역 -->
+                    <HBox alignment="CENTER_LEFT" spacing="15.0">
+                        <Label styleClass="section-title" text="시간대별 파일 정리 현황" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label text="기간:" />
+                        <ComboBox fx:id="timePeriodComboBox" prefWidth="120.0" />
+                    </HBox>
+
+                    <!-- 타임라인 차트 -->
+                    <VBox styleClass="chart-container" VBox.vgrow="ALWAYS">
+                        <LineChart fx:id="timelineChart" prefHeight="400.0" VBox.vgrow="ALWAYS">
+                            <xAxis>
+                                <CategoryAxis fx:id="timelineAxis" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis fx:id="timelineNumberAxis" />
+                            </yAxis>
+                        </LineChart>
+                    </VBox>
+
+                    <!-- 시간대별 통계 테이블 -->
+                    <VBox styleClass="timeline-stats">
+                        <Label styleClass="subsection-title" text="📊 기간별 요약" />
+                        <GridPane hgap="20.0" vgap="10.0">
+                            <columnConstraints>
+                                <ColumnConstraints halignment="LEFT" />
+                                <ColumnConstraints halignment="RIGHT" />
+                                <ColumnConstraints halignment="LEFT" />
+                                <ColumnConstraints halignment="RIGHT" />
+                            </columnConstraints>
+
+                            <Label text="일평균 정리 파일:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                            <Label text="25개" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+                            <Label text="최대 정리 일자:" GridPane.columnIndex="2" GridPane.rowIndex="0" />
+                            <Label text="2024-01-15 (47개)" GridPane.columnIndex="3" GridPane.rowIndex="0" />
+
+                            <Label text="활동 일수:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                            <Label text="12일" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+                            <Label text="총 절약 공간:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                            <Label text="2.3 GB" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                        </GridPane>
+                    </VBox>
+                </VBox>
+            </Tab>
+
+            <!-- 작업 히스토리 탭 -->
+            <Tab text="📋 작업 히스토리">
+                <VBox spacing="15.0">
+                    <padding>
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                    </padding>
+
+                    <HBox alignment="CENTER_LEFT" spacing="15.0">
+                        <Label styleClass="section-title" text="최근 작업 내역" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <TextField promptText="🔍 검색..." />
+                        <Button text="📅 필터" />
+                        <Button text="📁 내보내기" />
+                    </HBox>
+
+                    <!-- 히스토리 테이블 -->
+                    <TableView fx:id="historyTable" styleClass="history-table" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="dateColumn" prefWidth="150.0" text="날짜/시간" />
+                            <TableColumn fx:id="actionColumn" prefWidth="100.0" text="작업" />
+                            <TableColumn fx:id="fileCountColumn" prefWidth="80.0" text="파일 수" />
+                            <TableColumn fx:id="sizeColumn" prefWidth="100.0" text="크기" />
+                            <TableColumn prefWidth="200.0" text="설명" />
+                        </columns>
+                        <placeholder>
+                            <Label text="아직 작업 내역이 없습니다." />
+                        </placeholder>
+                    </TableView>
+                </VBox>
+            </Tab>
+
+            <!-- 상세 분석 탭 -->
+            <Tab text="🔍 상세 분석">
+                <ScrollPane fitToHeight="true" fitToWidth="true">
+                    <VBox spacing="20.0">
+                        <padding>
+                            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                        </padding>
+
+                        <!-- 폴더 구조 분석 -->
+                        <VBox styleClass="analysis-section">
+                            <Label styleClass="section-title" text="📁 정리된 폴더 구조" />
+
+                            <HBox spacing="20.0" VBox.vgrow="ALWAYS">
+                                <!-- 트리뷰 -->
+                                <VBox styleClass="tree-container" HBox.hgrow="ALWAYS">
+                                    <Label styleClass="subsection-title" text="폴더 계층 구조" />
+                                    <TreeView fx:id="folderStructureTree" prefHeight="300.0" VBox.vgrow="ALWAYS" />
+                                </VBox>
+
+                                <!-- 폴더별 통계 -->
+                                <VBox fx:id="detailAnalysisContainer" styleClass="folder-stats" HBox.hgrow="ALWAYS">
+                                    <Label styleClass="subsection-title" text="폴더별 상세 정보" />
+
+                                    <!-- 선택된 폴더 정보 -->
+                                    <VBox styleClass="selected-folder-info" spacing="10.0">
+                                        <Label styleClass="folder-name" text="선택된 폴더: Documents" />
+
+                                        <GridPane hgap="15.0" vgap="8.0">
+                                            <columnConstraints>
+                                                <ColumnConstraints halignment="LEFT" />
+                                                <ColumnConstraints halignment="RIGHT" />
+                                            </columnConstraints>
+
+                                            <Label text="파일 수:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                            <Label text="127개" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+                                            <Label text="총 크기:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                            <Label text="845.2 MB" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+                                            <Label text="평균 파일 크기:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                                            <Label text="6.7 MB" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+                                            <Label text="최근 추가:" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                                            <Label text="2024-01-15" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                                        </GridPane>
+
+                                        <!-- 파일 타입 분포 -->
+                                        <Label styleClass="subsection-title" text="파일 타입 분포" />
+                                        <VBox spacing="5.0">
+                                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                                <Label text="PDF:" />
+                                                <ProgressBar prefWidth="150.0" progress="0.45" />
+                                                <Label text="45%" />
+                                            </HBox>
+                                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                                <Label text="DOCX:" />
+                                                <ProgressBar prefWidth="150.0" progress="0.3" />
+                                                <Label text="30%" />
+                                            </HBox>
+                                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                                <Label text="TXT:" />
+                                                <ProgressBar prefWidth="150.0" progress="0.15" />
+                                                <Label text="15%" />
+                                            </HBox>
+                                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                                <Label text="기타:" />
+                                                <ProgressBar prefWidth="150.0" progress="0.1" />
+                                                <Label text="10%" />
+                                            </HBox>
+                                        </VBox>
+                                    </VBox>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+
+                        <!-- 효율성 분석 -->
+                        <VBox styleClass="efficiency-analysis">
+                            <Label styleClass="section-title" text="📈 정리 효율성 분석" />
+
+                            <GridPane hgap="30.0" vgap="15.0">
+                                <columnConstraints>
+                                    <ColumnConstraints halignment="LEFT" hgrow="ALWAYS" />
+                                    <ColumnConstraints halignment="LEFT" hgrow="ALWAYS" />
+                                </columnConstraints>
+
+                                <!-- 왼쪽 열 -->
+                                <VBox spacing="10.0" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                    <Label styleClass="subsection-title" text="🎯 정리 성과" />
+
+                                    <HBox alignment="CENTER_LEFT" spacing="15.0">
+                                        <Label text="정리 정확도:" />
+                                        <ProgressBar prefWidth="120.0" progress="0.92" />
+                                        <Label text="92%" />
+                                    </HBox>
+
+                                    <HBox alignment="CENTER_LEFT" spacing="15.0">
+                                        <Label text="자동 분류율:" />
+                                        <ProgressBar prefWidth="120.0" progress="0.87" />
+                                        <Label text="87%" />
+                                    </HBox>
+
+                                    <HBox alignment="CENTER_LEFT" spacing="15.0">
+                                        <Label text="중복 제거율:" />
+                                        <ProgressBar prefWidth="120.0" progress="0.78" />
+                                        <Label text="78%" />
+                                    </HBox>
+                                </VBox>
+
+                                <!-- 오른쪽 열 -->
+                                <VBox spacing="10.0" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                    <Label styleClass="subsection-title" text="💡 개선 제안" />
+
+                                    <VBox spacing="5.0">
+                                        <Label styleClass="suggestion-item" text="• 스크린샷 파일들을 월별로 세분화하는 것을 추천합니다" />
+                                        <Label styleClass="suggestion-item" text="• Downloads 폴더에 임시 파일이 많이 발견되었습니다" />
+                                        <Label styleClass="suggestion-item" text="• 중복된 이미지 파일 15개를 정리하면 125MB 절약 가능합니다" />
+                                        <Label styleClass="suggestion-item" text="• AI 분석을 활성화하면 분류 정확도가 향상됩니다" />
+                                    </VBox>
+                                </VBox>
+                            </GridPane>
+                        </VBox>
+
+                        <!-- 시스템 정보 -->
+                        <VBox styleClass="system-info">
+                            <Label styleClass="section-title" text="🔧 시스템 정보" />
+
+                            <GridPane hgap="20.0" vgap="8.0">
+                                <columnConstraints>
+                                    <ColumnConstraints halignment="LEFT" />
+                                    <ColumnConstraints halignment="LEFT" />
+                                    <ColumnConstraints halignment="LEFT" />
+                                    <ColumnConstraints halignment="LEFT" />
+                                </columnConstraints>
+
+                                <Label text="데이터베이스 크기:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                <Label text="2.4 MB" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+                                <Label text="캐시 크기:" GridPane.columnIndex="2" GridPane.rowIndex="0" />
+                                <Label text="156 KB" GridPane.columnIndex="3" GridPane.rowIndex="0" />
+
+                                <Label text="총 처리 시간:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                <Label text="3분 42초" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+                                <Label text="평균 처리 속도:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                                <Label text="45파일/분" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+
+                                <Label text="마지막 백업:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                                <Label text="2024-01-15 14:30" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+                                <Label text="설정 파일 위치:" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                                <Label text="~/.smartfilemanager/" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                            </GridPane>
+                        </VBox>
+                    </VBox>
+                </ScrollPane>
+            </Tab>
+
+        </TabPane>
+    </center>
+
+    <!-- 하단 액션 바 -->
+    <bottom>
+        <HBox alignment="CENTER_RIGHT" spacing="10.0" styleClass="action-bar">
+            <padding>
+                <Insets bottom="15.0" left="20.0" right="20.0" top="15.0" />
+            </padding>
+
+            <Button styleClass="secondary-button" text="📊 CSV 내보내기" />
+            <Button styleClass="secondary-button" text="📈 PDF 보고서" />
+            <Button styleClass="primary-button" text="🔄 전체 새로고침" />
+        </HBox>
+    </bottom>
+
+</BorderPane>
