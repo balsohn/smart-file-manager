@@ -4,7 +4,11 @@ import com.smartfilemanager.model.AppConfig;
 import com.smartfilemanager.service.ConfigService;
 import com.smartfilemanager.ui.ThemeManager;
 import com.smartfilemanager.ui.UIFactory;
+import com.smartfilemanager.util.AIAnalyzer;
 import com.smartfilemanager.util.StartupManager;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -15,15 +19,19 @@ import java.io.File;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 /**
- * 설정 화면 컨트롤러
+ * 설정 화면 컨트롤러 (AI 분석 완전 통합 버전)
  * 사용자가 애플리케이션 설정을 변경할 수 있도록 합니다
  */
 public class SettingsController implements Initializable {
 
-    // FXML UI 컴포넌트들
+    // ===============================
+    // 📋 FXML UI 컴포넌트들
+    // ===============================
+
     @FXML private TabPane settingsTabPane;
 
     // 기본 설정 탭
@@ -65,13 +73,23 @@ public class SettingsController implements Initializable {
     @FXML private Button cancelButton;
     @FXML private Button saveButton;
 
+    // AI 관련 UI 컴포넌트들
+    @FXML private Label aiStatusLabel;
+    @FXML private Button testApiKeyButton;
+
     // 서비스와 상태
     private ConfigService configService;
     private AppConfig originalConfig;
     private Stage settingsStage;
 
+    // ===============================
+    // 🚀 초기화 메서드들
+    // ===============================
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        System.out.println("[INFO] 설정 화면 초기화 시작");
+
         // 서비스 초기화
         configService = new ConfigService();
         originalConfig = configService.getCurrentConfig();
@@ -80,6 +98,7 @@ public class SettingsController implements Initializable {
         setupSpinners();
         setupComboBoxes();
         setupEventHandlers();
+        setupAIEventHandlers();
 
         // 현재 설정 값으로 UI 초기화
         loadConfigToUI(originalConfig);
@@ -87,7 +106,7 @@ public class SettingsController implements Initializable {
         setInitialUIStates();
         updateUIStatesAfterLoad();
 
-        System.out.println("[INFO] 설정 화면이 초기화되었습니다.");
+        System.out.println("[SUCCESS] 설정 화면 초기화 완료");
     }
 
     /**
@@ -140,196 +159,12 @@ public class SettingsController implements Initializable {
     }
 
     /**
-     * 테마 변경 처리
+     * 기본 이벤트 핸들러 설정
      */
-    private void handleThemeChange() {
-        String selectedTheme = themeComboBox.getValue();
-        if (selectedTheme != null) {
-            // 테마 이름에서 ID 추출
-            String themeId = selectedTheme.toLowerCase().contains("dark") ? "dark" : "light";
-
-            try {
-                ThemeManager.applyThemeById(themeId);
-                System.out.println("[INFO] 테마 변경됨: " + selectedTheme);
-
-                // 즉시 미리보기 제공
-                showThemePreview(selectedTheme);
-
-            } catch (Exception e) {
-                System.err.println("[ERROR] 테마 적용 실패: " + e.getMessage());
-
-                // 실패 시 이전 테마로 복원
-                String currentThemeId = ThemeManager.getCurrentThemeId();
-                loadThemeToComboBox(currentThemeId);
-            }
-        }
-    }
-
-    /**
-     * 테마 미리보기 메시지
-     */
-    private void showThemePreview(String themeName) {
-        // 간단한 툴팁이나 상태 메시지로 피드백 제공
-        themeComboBox.setTooltip(new Tooltip("현재 적용됨: " + themeName));
-    }
-
-    /**
-     * 테마를 콤보박스에 로드
-     */
-    private void loadThemeToComboBox(String themeId) {
-        if (themeId == null) themeId = "light";
-
-        String[] themeNames = ThemeManager.getThemeNames();
-        for (String themeName : themeNames) {
-            if ((themeId.equals("light") && themeName.contains("Light")) ||
-                    (themeId.equals("dark") && themeName.contains("Dark"))) {
-                themeComboBox.setValue(themeName);
-                break;
-            }
-        }
-    }
-
-    /**
-     * 언어를 콤보박스에 로드
-     */
-    private void loadLanguageToComboBox(String languageCode) {
-        if (languageCode == null) languageCode = "ko";
-
-        switch (languageCode) {
-            case "ko":
-                languageComboBox.setValue("한국어 (ko)");
-                break;
-            case "en":
-                languageComboBox.setValue("English (en)");
-                break;
-            default:
-                languageComboBox.setValue("한국어 (ko)");
-                break;
-        }
-    }
-
-    /**
-     * 콤보박스에서 테마 ID 추출
-     */
-    private String getThemeFromComboBox() {
-        String selectedTheme = themeComboBox.getValue();
-        if (selectedTheme != null) {
-            return selectedTheme.toLowerCase().contains("dark") ? "dark" : "light";
-        }
-        return "light";
-    }
-
-    /**
-     * 콤보박스에서 중복 해결 전략 추출
-     */
-    private String getDuplicateStrategyFromComboBox() {
-        String selectedStrategy = duplicateStrategyComboBox.getValue();
-        if (selectedStrategy != null) {
-            if (selectedStrategy.contains("KEEP_NEWEST")) {
-                return "KEEP_NEWEST";
-            } else if (selectedStrategy.contains("KEEP_LARGEST")) {
-                return "KEEP_LARGEST";
-            } else if (selectedStrategy.contains("ASK_USER")) {
-                return "ASK_USER";
-            }
-        }
-        return "ASK_USER"; // 기본값
-    }
-
-    /**
-     * 콤보박스에서 언어 코드 추출
-     */
-    private String getLanguageFromComboBox() {
-        String selectedLanguage = languageComboBox.getValue();
-        if (selectedLanguage != null) {
-            if (selectedLanguage.contains("(en)")) {
-                return "en";
-            } else if (selectedLanguage.contains("(ko)")) {
-                return "ko";
-            }
-        }
-        return "ko"; // 기본값
-    }
-
-    /**
-     * 이벤트 핸들러 설정
-     */
-    /**
-     * Windows 시작프로그램 등록/해제 처리
-     */
-    private void handleStartupToggle(boolean enable) {
-        if (!StartupManager.isSupported()) {
-            UIFactory.showInfoDialog("❌ 지원되지 않음",
-                    "Windows 시작프로그램 기능은 Windows에서만 지원됩니다.");
-            startWithWindowsCheckBox.setSelected(false);
-            return;
-        }
-
-        try {
-            boolean success;
-
-            if (enable) {
-                // 시작프로그램 등록
-                String executablePath = StartupManager.getCurrentExecutablePath();
-
-                if (executablePath == null) {
-                    throw new Exception("실행 파일 경로를 확인할 수 없습니다");
-                }
-
-                success = StartupManager.register(executablePath);
-
-                if (success) {
-                    UIFactory.showInfoDialog("✅ 등록 완료",
-                            "Windows 시작 시 Smart File Manager가 자동으로 실행됩니다.\n\n" +
-                                    "💡 팁: 시스템 트레이로 시작하려면 '트레이로 최소화' 옵션도 활성화하세요.");
-                    System.out.println("[SUCCESS] 시작프로그램 등록 완료");
-                } else {
-                    throw new Exception("시작프로그램 등록에 실패했습니다");
-                }
-
-            } else {
-                // 시작프로그램 해제
-                success = StartupManager.unregister();
-
-                if (success) {
-                    UIFactory.showInfoDialog("✅ 해제 완료",
-                            "Windows 시작프로그램에서 제거되었습니다.\n" +
-                                    "이제 시스템 시작 시 자동으로 실행되지 않습니다.");
-                    System.out.println("[SUCCESS] 시작프로그램 해제 완료");
-                } else {
-                    throw new Exception("시작프로그램 해제에 실패했습니다");
-                }
-            }
-
-            // 성공 시 체크박스 상태 유지
-            startWithWindowsCheckBox.setSelected(enable);
-
-        } catch (Exception e) {
-            System.err.println("[ERROR] 시작프로그램 설정 실패: " + e.getMessage());
-
-            // 실패 시 이전 상태로 되돌리기
-            startWithWindowsCheckBox.setSelected(!enable);
-
-            UIFactory.showInfoDialog("❌ 설정 실패",
-                    "시작프로그램 설정 중 오류가 발생했습니다:\n\n" +
-                            e.getMessage() + "\n\n" +
-                            "💡 관리자 권한으로 실행하거나 나중에 다시 시도해보세요.");
-        }
-    }
-
     private void setupEventHandlers() {
         // 폴더 선택 버튼들
         browseScanFolderButton.setOnAction(e -> handleBrowseScanFolder());
         browseOrganizationFolderButton.setOnAction(e -> handleBrowseOrganizationFolder());
-
-        // AI 분석 체크박스 변경 시 API 키 필드 활성화/비활성화
-        enableAIAnalysisCheckBox.setOnAction(e -> {
-            boolean aiEnabled = enableAIAnalysisCheckBox.isSelected();
-            aiApiKeyField.setDisable(!aiEnabled);
-            if (!aiEnabled) {
-                aiApiKeyField.clear();
-            }
-        });
 
         // 중복 파일 탐지 체크박스 변경 시 관련 옵션들 활성화/비활성화
         enableDuplicateDetectionCheckBox.setOnAction(e -> {
@@ -344,7 +179,7 @@ public class SettingsController implements Initializable {
             duplicateStrategyComboBox.setDisable(!autoResolve);
         });
 
-        // Windows 시작프로그램 체크박스 이벤트 추가
+        // Windows 시작프로그램 체크박스 이벤트
         startWithWindowsCheckBox.setOnAction(e -> {
             boolean shouldStart = startWithWindowsCheckBox.isSelected();
             handleStartupToggle(shouldStart);
@@ -366,6 +201,54 @@ public class SettingsController implements Initializable {
                 realTimeMonitoringCheckBox.setSelected(false);
             }
         });
+    }
+
+    /**
+     * AI 설정 이벤트 핸들러 설정
+     */
+    private void setupAIEventHandlers() {
+        // AI 분석 체크박스 이벤트
+        enableAIAnalysisCheckBox.setOnAction(e -> {
+            boolean enabled = enableAIAnalysisCheckBox.isSelected();
+
+            // API 키 필드 활성화/비활성화
+            aiApiKeyField.setDisable(!enabled);
+
+            // 테스트 버튼 활성화/비활성화
+            if (testApiKeyButton != null) {
+                testApiKeyButton.setDisable(!enabled);
+            }
+
+            if (enabled) {
+                // AI 분석 활성화 시 도움말 표시
+                aiApiKeyField.setPromptText("OpenAI API 키를 입력하세요 (예: sk-...)");
+
+                // API 키가 없으면 포커스 이동
+                if (aiApiKeyField.getText() == null || aiApiKeyField.getText().trim().isEmpty()) {
+                    Platform.runLater(() -> aiApiKeyField.requestFocus());
+                }
+            } else {
+                aiApiKeyField.setPromptText("AI 분석을 활성화하면 사용할 수 있습니다");
+                aiApiKeyField.clear();
+            }
+
+            updateAIStatusLabel();
+        });
+
+        // API 키 입력 이벤트
+        aiApiKeyField.textProperty().addListener((observable, oldValue, newValue) -> {
+            updateAIStatusLabel();
+
+            // API 키 형식 검증
+            if (newValue != null && !newValue.trim().isEmpty()) {
+                validateApiKeyFormat(newValue.trim());
+            }
+        });
+
+        // API 키 테스트 버튼
+        if (testApiKeyButton != null) {
+            testApiKeyButton.setOnAction(this::handleTestApiKey);
+        }
     }
 
     /**
@@ -396,6 +279,29 @@ public class SettingsController implements Initializable {
     }
 
     /**
+     * 설정 로드 후 UI 상태 업데이트
+     */
+    private void updateUIStatesAfterLoad() {
+        // 자동 정리 상태에 따라 실시간 모니터링 활성화/비활성화
+        realTimeMonitoringCheckBox.setDisable(!autoOrganizeCheckBox.isSelected());
+
+        // 중복 탐지 상태에 따라 관련 컨트롤들 활성화/비활성화
+        autoResolveDuplicatesCheckBox.setDisable(!enableDuplicateDetectionCheckBox.isSelected());
+        duplicateStrategyComboBox.setDisable(!enableDuplicateDetectionCheckBox.isSelected() ||
+                !autoResolveDuplicatesCheckBox.isSelected());
+
+        // AI 분석 상태에 따라 API 키 필드 활성화/비활성화
+        aiApiKeyField.setDisable(!enableAIAnalysisCheckBox.isSelected());
+        if (testApiKeyButton != null) {
+            testApiKeyButton.setDisable(!enableAIAnalysisCheckBox.isSelected());
+        }
+    }
+
+    // ===============================
+    // 📋 설정 데이터 로드/저장 메서드들
+    // ===============================
+
+    /**
      * 설정을 UI에 로드
      */
     private void loadConfigToUI(AppConfig config) {
@@ -416,8 +322,6 @@ public class SettingsController implements Initializable {
         // 중복 파일 설정
         enableDuplicateDetectionCheckBox.setSelected(config.isEnableDuplicateDetection());
         autoResolveDuplicatesCheckBox.setSelected(config.isAutoResolveDuplicates());
-
-        // 중복 해결 전략 로드
         loadDuplicateStrategyToComboBox(config.getDuplicateResolutionStrategy());
 
         // 성능 설정
@@ -425,55 +329,18 @@ public class SettingsController implements Initializable {
         monitoringIntervalSpinner.getValueFactory().setValue(config.getMonitoringInterval());
         maxFileCountSpinner.getValueFactory().setValue(config.getMaxFileCount());
         enableContentAnalysisCheckBox.setSelected(config.isEnableContentAnalysis());
-        enableAIAnalysisCheckBox.setSelected(config.isEnableAIAnalysis());
 
-        if (config.getAiApiKey() != null) {
-            aiApiKeyField.setText(config.getAiApiKey());
-        }
+        // AI 설정 로드
+        loadAISettingsFromConfig(config);
 
         // UI 설정
         loadLanguageToComboBox(config.getLanguage());
         loadThemeToComboBox(config.getTheme());
         minimizeToTrayCheckBox.setSelected(config.isMinimizeToTray());
-        startWithWindowsCheckBox.setSelected(config.isStartWithWindows());
         debugModeCheckBox.setSelected(config.isDebugMode());
 
         // Windows 시작프로그램 설정 로드
-        if (StartupManager.isSupported()) {
-            // 설정값과 실제 등록 상태를 모두 확인
-            boolean configValue = config.isStartWithWindows();
-            boolean actuallyRegistered = StartupManager.isRegistered();
-
-            // 설정과 실제 상태가 다르면 실제 상태로 동기화
-            if (configValue != actuallyRegistered) {
-                System.out.println("[WARNING] 시작프로그램 설정 불일치 - 실제 상태로 동기화");
-                config.setStartWithWindows(actuallyRegistered);
-            }
-
-            startWithWindowsCheckBox.setSelected(actuallyRegistered);
-            startWithWindowsCheckBox.setDisable(false);
-        } else {
-            // Windows가 아닌 경우 비활성화
-            startWithWindowsCheckBox.setSelected(false);
-            startWithWindowsCheckBox.setDisable(true);
-            startWithWindowsCheckBox.setTooltip(new Tooltip("Windows에서만 지원되는 기능입니다"));
-        }
-    }
-
-    /**
-     * 설정 로드 후 UI 상태 업데이트
-     */
-    private void updateUIStatesAfterLoad() {
-        // 자동 정리 상태에 따라 실시간 모니터링 활성화/비활성화
-        realTimeMonitoringCheckBox.setDisable(!autoOrganizeCheckBox.isSelected());
-
-        // 중복 탐지 상태에 따라 관련 컨트롤들 활성화/비활성화
-        autoResolveDuplicatesCheckBox.setDisable(!enableDuplicateDetectionCheckBox.isSelected());
-        duplicateStrategyComboBox.setDisable(!enableDuplicateDetectionCheckBox.isSelected() ||
-                !autoResolveDuplicatesCheckBox.isSelected());
-
-        // AI 분석 상태에 따라 API 키 필드 활성화/비활성화
-        aiApiKeyField.setDisable(!enableAIAnalysisCheckBox.isSelected());
+        loadStartupSettings(config);
     }
 
     /**
@@ -483,8 +350,8 @@ public class SettingsController implements Initializable {
         AppConfig config = new AppConfig();
 
         // 기본 설정
-        config.setDefaultScanFolder(defaultScanFolderField.getText());
-        config.setOrganizationRootFolder(organizationFolderField.getText());
+        config.setDefaultScanFolder(defaultScanFolderField.getText().trim());
+        config.setOrganizationRootFolder(organizationFolderField.getText().trim());
 
         config.setAutoOrganizeEnabled(autoOrganizeCheckBox.isSelected());
         config.setRealTimeMonitoring(realTimeMonitoringCheckBox.isSelected());
@@ -497,35 +364,24 @@ public class SettingsController implements Initializable {
         // 중복 파일 설정
         config.setEnableDuplicateDetection(enableDuplicateDetectionCheckBox.isSelected());
         config.setAutoResolveDuplicates(autoResolveDuplicatesCheckBox.isSelected());
-
-        // 중복 해결 전략 매핑
-        String selectedStrategy = duplicateStrategyComboBox.getValue();
-        switch (selectedStrategy) {
-            case "최신 파일 유지": config.setDuplicateResolutionStrategy("KEEP_NEWEST"); break;
-            case "큰 파일 유지": config.setDuplicateResolutionStrategy("KEEP_LARGEST"); break;
-            case "작은 파일 유지": config.setDuplicateResolutionStrategy("KEEP_SMALLEST"); break;
-            default: config.setDuplicateResolutionStrategy("ASK_USER"); break;
-        }
+        config.setDuplicateResolutionStrategy(getDuplicateStrategyFromComboBox());
 
         // 성능 설정
         config.setMaxFileSizeForAnalysis(maxFileSizeSpinner.getValue());
         config.setMonitoringInterval(monitoringIntervalSpinner.getValue());
         config.setMaxFileCount(maxFileCountSpinner.getValue());
-
         config.setEnableContentAnalysis(enableContentAnalysisCheckBox.isSelected());
-        config.setEnableAIAnalysis(enableAIAnalysisCheckBox.isSelected());
 
-        String apiKey = aiApiKeyField.getText();
-        config.setAiApiKey(apiKey.trim().isEmpty() ? null : apiKey.trim());
+        // AI 설정 적용
+        applyAISettingsToConfig(config);
 
         // UI 설정
-        config.setLanguage("한국어".equals(languageComboBox.getValue()) ? "ko" : "en");
-        config.setTheme("어두운 테마".equals(themeComboBox.getValue()) ? "dark" : "light");
+        config.setLanguage(getLanguageFromComboBox());
+        config.setTheme(getThemeFromComboBox());
         config.setMinimizeToTray(minimizeToTrayCheckBox.isSelected());
-        config.setStartWithWindows(startWithWindowsCheckBox.isSelected());
         config.setDebugMode(debugModeCheckBox.isSelected());
 
-        // Windows 시작프로그램 설정 저장
+        // Windows 시작프로그램 설정
         if (StartupManager.isSupported()) {
             config.setStartWithWindows(startWithWindowsCheckBox.isSelected());
         } else {
@@ -535,6 +391,10 @@ public class SettingsController implements Initializable {
         return config;
     }
 
+    // ===============================
+    // 🎯 FXML 이벤트 핸들러들
+    // ===============================
+
     /**
      * 스캔 폴더 찾아보기
      */
@@ -543,12 +403,10 @@ public class SettingsController implements Initializable {
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("기본 스캔 폴더 선택");
 
-        // 현재 설정된 폴더가 있으면 그것을 초기 폴더로 설정
         String currentPath = defaultScanFolderField.getText().trim();
         if (!currentPath.isEmpty() && Files.exists(Paths.get(currentPath))) {
             directoryChooser.setInitialDirectory(new File(currentPath));
         } else {
-            // 기본값: 사용자 홈/Downloads
             File defaultDir = new File(System.getProperty("user.home"), "Downloads");
             if (defaultDir.exists()) {
                 directoryChooser.setInitialDirectory(defaultDir);
@@ -562,26 +420,6 @@ public class SettingsController implements Initializable {
     }
 
     /**
-     * 중복 해결 전략을 콤보박스에 로드
-     */
-    private void loadDuplicateStrategyToComboBox(String strategy) {
-        if (strategy == null) strategy = "ASK_USER";
-
-        switch (strategy) {
-            case "KEEP_NEWEST":
-                duplicateStrategyComboBox.setValue("최신 파일 유지 (KEEP_NEWEST)");
-                break;
-            case "KEEP_LARGEST":
-                duplicateStrategyComboBox.setValue("큰 파일 유지 (KEEP_LARGEST)");
-                break;
-            case "ASK_USER":
-            default:
-                duplicateStrategyComboBox.setValue("사용자 확인 (ASK_USER)");
-                break;
-        }
-    }
-
-    /**
      * 정리 폴더 찾아보기
      */
     @FXML
@@ -589,12 +427,10 @@ public class SettingsController implements Initializable {
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("파일 정리 폴더 선택");
 
-        // 현재 설정된 폴더가 있으면 그것을 초기 폴더로 설정
         String currentPath = organizationFolderField.getText().trim();
         if (!currentPath.isEmpty() && Files.exists(Paths.get(currentPath))) {
             directoryChooser.setInitialDirectory(new File(currentPath));
         } else {
-            // 기본값: 사용자 홈
             directoryChooser.setInitialDirectory(new File(System.getProperty("user.home")));
         }
 
@@ -613,36 +449,26 @@ public class SettingsController implements Initializable {
             AppConfig newConfig = getConfigFromUI();
 
             // 설정 유효성 검증
-            if (!newConfig.isValid()) {
-                UIFactory.showInfoDialog("❌ 설정 오류",
-                        "입력된 설정이 유효하지 않습니다.\n" +
-                                "폴더 경로와 숫자 값들을 확인해주세요.");
+            if (!validateConfig(newConfig)) {
                 return;
             }
 
             // 시작프로그램 설정 동기화 검증
-            if (StartupManager.isSupported()) {
-                boolean configWantsStartup = newConfig.isStartWithWindows();
-                boolean actuallyRegistered = StartupManager.isRegistered();
+            syncStartupSettings(newConfig);
 
-                if (configWantsStartup != actuallyRegistered) {
-                    System.out.println("[WARNING] 시작프로그램 설정 불일치 감지 - 자동 동기화");
-                    // 실제 상태에 맞춰 설정 업데이트
-                    newConfig.setStartWithWindows(actuallyRegistered);
-                }
+            // AI 설정 추가 검증
+            if (!validateAISettings(newConfig)) {
+                return;
             }
 
             // 설정 저장
             if (configService.saveConfig(newConfig)) {
-                UIFactory.showInfoDialog("💾 저장 완료",
-                        "설정이 성공적으로 저장되었습니다.\n" +
-                                "일부 설정은 애플리케이션을 다시 시작해야 적용됩니다.");
-
+                String message = buildSaveSuccessMessage(newConfig);
+                UIFactory.showInfoDialog("💾 저장 완료", message);
                 closeWindow();
             } else {
                 UIFactory.showInfoDialog("❌ 저장 실패",
-                        "설정 저장에 실패했습니다.\n" +
-                                "폴더 권한을 확인하거나 다시 시도해주세요.");
+                        "설정 저장에 실패했습니다.\n폴더 권한을 확인하거나 다시 시도해주세요.");
             }
 
         } catch (Exception e) {
@@ -657,16 +483,15 @@ public class SettingsController implements Initializable {
     @FXML
     private void handleReset() {
         boolean confirmed = UIFactory.showConfirmDialog("🔄 설정 초기화",
-                "모든 설정을 기본값으로 초기화하시겠습니까?\n" +
-                        "현재 설정은 백업됩니다.");
+                "모든 설정을 기본값으로 초기화하시겠습니까?\n현재 설정은 백업됩니다.");
 
         if (confirmed) {
             AppConfig defaultConfig = AppConfig.createDefault();
             loadConfigToUI(defaultConfig);
+            resetAISettings();
 
             UIFactory.showInfoDialog("🔄 초기화 완료",
-                    "설정이 기본값으로 초기화되었습니다.\n" +
-                            "'저장' 버튼을 클릭해서 적용하세요.");
+                    "설정이 기본값으로 초기화되었습니다.\n'저장' 버튼을 클릭해서 적용하세요.");
         }
     }
 
@@ -677,6 +502,529 @@ public class SettingsController implements Initializable {
     private void handleCancel() {
         closeWindow();
     }
+
+    /**
+     * AI 설정 도움말 표시
+     */
+    @FXML
+    private void handleAIHelp() {
+        Alert helpAlert = new Alert(Alert.AlertType.INFORMATION);
+        helpAlert.setTitle("AI 분석 도움말");
+        helpAlert.setHeaderText("AI 분석 기능에 대한 설명");
+
+        String helpText = """
+        🤖 AI 분석 기능
+        
+        • AI 분석을 활성화하면 OpenAI의 GPT 모델을 사용해서
+          파일을 더 정확하게 분류할 수 있습니다
+        
+        • API 키가 필요합니다:
+          1. https://platform.openai.com 에 회원가입
+          2. API Keys 메뉴에서 새 키 생성
+          3. 생성된 키를 여기에 입력
+        
+        • 분석되는 정보:
+          - 파일명과 확장자
+          - 파일 크기와 생성일
+          - 추출된 메타데이터
+          (실제 파일 내용은 전송되지 않습니다)
+        
+        • API 비용:
+          - 파일당 약 0.001~0.01원 정도
+          - 월 사용량 제한 설정 권장
+        
+        ⚠️ 주의사항:
+        • 개인 API 키를 안전하게 보관하세요
+        • 민감한 파일명이 있다면 비활성화하세요
+        """;
+
+        helpAlert.setContentText(helpText);
+        helpAlert.getDialogPane().setPrefWidth(500);
+        helpAlert.showAndWait();
+    }
+
+    /**
+     * API 키 테스트 이벤트 핸들러
+     */
+    @FXML
+    private void handleTestApiKey(ActionEvent event) {
+        String apiKey = aiApiKeyField.getText();
+
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            showAlert("오류", "API 키를 입력해주세요", Alert.AlertType.ERROR);
+            return;
+        }
+
+        if (!isValidApiKeyFormat(apiKey.trim())) {
+            showAlert("오류", "API 키 형식이 올바르지 않습니다.\nOpenAI API 키는 'sk-'로 시작해야 합니다.", Alert.AlertType.ERROR);
+            return;
+        }
+
+        testApiKeyAsync(apiKey.trim());
+    }
+
+    // ===============================
+    // 🤖 AI 분석 관련 메서드들
+    // ===============================
+
+    /**
+     * AppConfig에서 AI 설정을 UI로 로드
+     */
+    private void loadAISettingsFromConfig(AppConfig config) {
+        enableAIAnalysisCheckBox.setSelected(config.isEnableAIAnalysis());
+
+        String apiKey = config.getAiApiKey();
+        if (apiKey != null) {
+            aiApiKeyField.setText(apiKey);
+        } else {
+            aiApiKeyField.clear();
+        }
+
+        updateAIStatusLabel();
+    }
+
+    /**
+     * AI 설정을 UI에서 AppConfig로 적용
+     */
+    private void applyAISettingsToConfig(AppConfig config) {
+        config.setEnableAIAnalysis(enableAIAnalysisCheckBox.isSelected());
+
+        String apiKey = aiApiKeyField.getText();
+        if (apiKey != null && !apiKey.trim().isEmpty()) {
+            config.setAiApiKey(apiKey.trim());
+        } else {
+            config.setAiApiKey(null);
+        }
+
+        config.setAiModel("gpt-3.5-turbo");
+    }
+
+    /**
+     * AI 상태 라벨 업데이트
+     */
+    private void updateAIStatusLabel() {
+        if (!enableAIAnalysisCheckBox.isSelected()) {
+            setAIStatusLabel("AI 분석이 비활성화되어 있습니다", "warning");
+            return;
+        }
+
+        String apiKey = aiApiKeyField.getText();
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            setAIStatusLabel("API 키가 필요합니다", "error");
+            return;
+        }
+
+        if (!isValidApiKeyFormat(apiKey.trim())) {
+            setAIStatusLabel("API 키 형식이 올바르지 않습니다", "error");
+            return;
+        }
+
+        setAIStatusLabel("AI 분석이 활성화되어 있습니다 (테스트 필요)", "success");
+    }
+
+    /**
+     * AI 상태 라벨 설정
+     */
+    private void setAIStatusLabel(String message, String type) {
+        if (aiStatusLabel != null) {
+            aiStatusLabel.setText(message);
+            aiStatusLabel.getStyleClass().removeAll("status-success", "status-warning", "status-error");
+            aiStatusLabel.getStyleClass().add("status-" + type);
+        } else {
+            System.out.println("[AI Status] " + message);
+        }
+    }
+
+    /**
+     * API 키 형식 검증
+     */
+    private boolean isValidApiKeyFormat(String apiKey) {
+        return apiKey.startsWith("sk-") && apiKey.length() > 20;
+    }
+
+    /**
+     * API 키 형식 실시간 검증
+     */
+    private void validateApiKeyFormat(String apiKey) {
+        if (!isValidApiKeyFormat(apiKey)) {
+            if (aiApiKeyField.getTooltip() == null) {
+                Tooltip tooltip = new Tooltip("OpenAI API 키는 'sk-'로 시작해야 합니다");
+                aiApiKeyField.setTooltip(tooltip);
+            }
+
+            if (!aiApiKeyField.getStyleClass().contains("text-field-error")) {
+                aiApiKeyField.getStyleClass().add("text-field-error");
+            }
+        } else {
+            aiApiKeyField.setTooltip(null);
+            aiApiKeyField.getStyleClass().remove("text-field-error");
+        }
+    }
+
+    /**
+     * 비동기 API 키 테스트
+     */
+    private void testApiKeyAsync(String apiKey) {
+        if (testApiKeyButton != null) {
+            testApiKeyButton.setDisable(true);
+            testApiKeyButton.setText("테스트 중...");
+        }
+
+        setAIStatusLabel("API 키를 테스트하고 있습니다...", "warning");
+
+        Task<Boolean> testTask = new Task<Boolean>() {
+            @Override
+            protected Boolean call() throws Exception {
+                try {
+                    AIAnalyzer testAnalyzer = new AIAnalyzer();
+                    testAnalyzer.setApiKey(apiKey);
+                    return testAnalyzer.validateApiKey();
+                } catch (Exception e) {
+                    System.err.println("[ERROR] API 키 테스트 실패: " + e.getMessage());
+                    return false;
+                }
+            }
+
+            @Override
+            protected void succeeded() {
+                Platform.runLater(() -> {
+                    boolean isValid = getValue();
+
+                    if (isValid) {
+                        setAIStatusLabel("✅ API 키가 유효합니다!", "success");
+                        showAlert("성공", "API 키가 유효합니다.\nAI 분석 기능을 사용할 수 있습니다.", Alert.AlertType.INFORMATION);
+                    } else {
+                        setAIStatusLabel("❌ API 키가 유효하지 않습니다", "error");
+                        showAlert("오류", "API 키가 유효하지 않습니다.\n다시 확인해주세요.", Alert.AlertType.ERROR);
+                    }
+
+                    if (testApiKeyButton != null) {
+                        testApiKeyButton.setDisable(false);
+                        testApiKeyButton.setText("테스트");
+                    }
+                });
+            }
+
+            @Override
+            protected void failed() {
+                Platform.runLater(() -> {
+                    setAIStatusLabel("❌ API 키 테스트 실패", "error");
+                    showAlert("오류", "API 키 테스트 중 오류가 발생했습니다:\n" + getException().getMessage(), Alert.AlertType.ERROR);
+
+                    if (testApiKeyButton != null) {
+                        testApiKeyButton.setDisable(false);
+                        testApiKeyButton.setText("테스트");
+                    }
+                });
+            }
+        };
+
+        Thread testThread = new Thread(testTask);
+        testThread.setDaemon(true);
+        testThread.start();
+    }
+
+    /**
+     * AI 설정 초기화
+     */
+    private void resetAISettings() {
+        enableAIAnalysisCheckBox.setSelected(false);
+        aiApiKeyField.clear();
+        aiApiKeyField.setDisable(true);
+
+        if (testApiKeyButton != null) {
+            testApiKeyButton.setDisable(true);
+        }
+
+        setAIStatusLabel("AI 분석이 비활성화되어 있습니다", "warning");
+    }
+
+    /**
+     * AI 설정 검증
+     */
+    private boolean validateAISettings(AppConfig config) {
+        if (config.isEnableAIAnalysis()) {
+            if (config.getAiApiKey() == null || config.getAiApiKey().trim().isEmpty()) {
+                Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                confirmAlert.setTitle("AI 설정 확인");
+                confirmAlert.setHeaderText("AI 분석이 활성화되어 있지만 API 키가 없습니다");
+                confirmAlert.setContentText("API 키 없이 저장하시겠습니까?\n(AI 분석 기능은 사용할 수 없습니다)");
+
+                Optional<ButtonType> result = confirmAlert.showAndWait();
+                if (result.isEmpty() || result.get() != ButtonType.OK) {
+                    return false;
+                }
+            } else if (!isValidApiKeyFormat(config.getAiApiKey())) {
+                showAlert("오류", "API 키 형식이 올바르지 않습니다.\n'sk-'로 시작하는 유효한 OpenAI API 키를 입력해주세요.", Alert.AlertType.ERROR);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // ===============================
+    // 🖥️ 테마 관리 메서드들
+    // ===============================
+
+    /**
+     * 테마 변경 처리
+     */
+    private void handleThemeChange() {
+        String selectedTheme = themeComboBox.getValue();
+        if (selectedTheme != null) {
+            String themeId = selectedTheme.toLowerCase().contains("dark") ? "dark" : "light";
+
+            try {
+                ThemeManager.applyThemeById(themeId);
+                System.out.println("[INFO] 테마 변경됨: " + selectedTheme);
+                showThemePreview(selectedTheme);
+            } catch (Exception e) {
+                System.err.println("[ERROR] 테마 적용 실패: " + e.getMessage());
+                String currentThemeId = ThemeManager.getCurrentThemeId();
+                loadThemeToComboBox(currentThemeId);
+            }
+        }
+    }
+
+    /**
+     * 테마 미리보기 메시지
+     */
+    private void showThemePreview(String themeName) {
+        themeComboBox.setTooltip(new Tooltip("현재 적용됨: " + themeName));
+    }
+
+    /**
+     * 테마를 콤보박스에 로드
+     */
+    private void loadThemeToComboBox(String themeId) {
+        if (themeId == null) themeId = "light";
+
+        if (themeId.equals("dark")) {
+            themeComboBox.setValue("어두운 테마");
+        } else {
+            themeComboBox.setValue("밝은 테마");
+        }
+    }
+
+    /**
+     * 콤보박스에서 테마 ID 추출
+     */
+    private String getThemeFromComboBox() {
+        String selectedTheme = themeComboBox.getValue();
+        if (selectedTheme != null) {
+            return selectedTheme.toLowerCase().contains("dark") ? "dark" : "light";
+        }
+        return "light";
+    }
+
+    // ===============================
+    // 🌐 언어 설정 메서드들
+    // ===============================
+
+    /**
+     * 언어를 콤보박스에 로드
+     */
+    private void loadLanguageToComboBox(String languageCode) {
+        if (languageCode == null) languageCode = "ko";
+
+        switch (languageCode) {
+            case "ko":
+                languageComboBox.setValue("한국어");
+                break;
+            case "en":
+                languageComboBox.setValue("English");
+                break;
+            default:
+                languageComboBox.setValue("한국어");
+                break;
+        }
+    }
+
+    /**
+     * 콤보박스에서 언어 코드 추출
+     */
+    private String getLanguageFromComboBox() {
+        String selectedLanguage = languageComboBox.getValue();
+        if (selectedLanguage != null) {
+            if (selectedLanguage.equals("English")) {
+                return "en";
+            } else {
+                return "ko";
+            }
+        }
+        return "ko";
+    }
+
+    // ===============================
+    // 📁 중복 파일 설정 메서드들
+    // ===============================
+
+    /**
+     * 중복 해결 전략을 콤보박스에 로드
+     */
+    private void loadDuplicateStrategyToComboBox(String strategy) {
+        if (strategy == null) strategy = "ASK_USER";
+
+        switch (strategy) {
+            case "KEEP_NEWEST":
+                duplicateStrategyComboBox.setValue("최신 파일 유지");
+                break;
+            case "KEEP_LARGEST":
+                duplicateStrategyComboBox.setValue("큰 파일 유지");
+                break;
+            case "KEEP_SMALLEST":
+                duplicateStrategyComboBox.setValue("작은 파일 유지");
+                break;
+            case "ASK_USER":
+            default:
+                duplicateStrategyComboBox.setValue("사용자에게 물어보기");
+                break;
+        }
+    }
+
+    /**
+     * 콤보박스에서 중복 해결 전략 추출
+     */
+    private String getDuplicateStrategyFromComboBox() {
+        String selectedStrategy = duplicateStrategyComboBox.getValue();
+        if (selectedStrategy != null) {
+            switch (selectedStrategy) {
+                case "최신 파일 유지": return "KEEP_NEWEST";
+                case "큰 파일 유지": return "KEEP_LARGEST";
+                case "작은 파일 유지": return "KEEP_SMALLEST";
+                default: return "ASK_USER";
+            }
+        }
+        return "ASK_USER";
+    }
+
+    // ===============================
+    // 🚀 시작프로그램 관리 메서드들
+    // ===============================
+
+    /**
+     * Windows 시작프로그램 설정 로드
+     */
+    private void loadStartupSettings(AppConfig config) {
+        if (StartupManager.isSupported()) {
+            boolean configValue = config.isStartWithWindows();
+            boolean actuallyRegistered = StartupManager.isRegistered();
+
+            if (configValue != actuallyRegistered) {
+                System.out.println("[WARNING] 시작프로그램 설정 불일치 - 실제 상태로 동기화");
+                config.setStartWithWindows(actuallyRegistered);
+            }
+
+            startWithWindowsCheckBox.setSelected(actuallyRegistered);
+            startWithWindowsCheckBox.setDisable(false);
+        } else {
+            startWithWindowsCheckBox.setSelected(false);
+            startWithWindowsCheckBox.setDisable(true);
+            startWithWindowsCheckBox.setTooltip(new Tooltip("Windows에서만 지원되는 기능입니다"));
+        }
+    }
+
+    /**
+     * Windows 시작프로그램 등록/해제 처리
+     */
+    private void handleStartupToggle(boolean enable) {
+        if (!StartupManager.isSupported()) {
+            UIFactory.showInfoDialog("❌ 지원되지 않음",
+                    "Windows 시작프로그램 기능은 Windows에서만 지원됩니다.");
+            startWithWindowsCheckBox.setSelected(false);
+            return;
+        }
+
+        try {
+            boolean success;
+
+            if (enable) {
+                String executablePath = StartupManager.getCurrentExecutablePath();
+                if (executablePath == null) {
+                    throw new Exception("실행 파일 경로를 확인할 수 없습니다");
+                }
+
+                success = StartupManager.register(executablePath);
+                if (success) {
+                    UIFactory.showInfoDialog("✅ 등록 완료",
+                            "Windows 시작 시 Smart File Manager가 자동으로 실행됩니다.\n\n" +
+                                    "💡 팁: 시스템 트레이로 시작하려면 '트레이로 최소화' 옵션도 활성화하세요.");
+                } else {
+                    throw new Exception("시작프로그램 등록에 실패했습니다");
+                }
+            } else {
+                success = StartupManager.unregister();
+                if (success) {
+                    UIFactory.showInfoDialog("✅ 해제 완료",
+                            "Windows 시작프로그램에서 제거되었습니다.\n" +
+                                    "이제 시스템 시작 시 자동으로 실행되지 않습니다.");
+                } else {
+                    throw new Exception("시작프로그램 해제에 실패했습니다");
+                }
+            }
+
+            startWithWindowsCheckBox.setSelected(enable);
+
+        } catch (Exception e) {
+            System.err.println("[ERROR] 시작프로그램 설정 실패: " + e.getMessage());
+            startWithWindowsCheckBox.setSelected(!enable);
+
+            UIFactory.showInfoDialog("❌ 설정 실패",
+                    "시작프로그램 설정 중 오류가 발생했습니다:\n\n" +
+                            e.getMessage() + "\n\n" +
+                            "💡 관리자 권한으로 실행하거나 나중에 다시 시도해보세요.");
+        }
+    }
+
+    /**
+     * 시작프로그램 설정 동기화
+     */
+    private void syncStartupSettings(AppConfig newConfig) {
+        if (StartupManager.isSupported()) {
+            boolean configWantsStartup = newConfig.isStartWithWindows();
+            boolean actuallyRegistered = StartupManager.isRegistered();
+
+            if (configWantsStartup != actuallyRegistered) {
+                System.out.println("[WARNING] 시작프로그램 설정 불일치 감지 - 자동 동기화");
+                newConfig.setStartWithWindows(actuallyRegistered);
+            }
+        }
+    }
+
+    // ===============================
+    // ✅ 유효성 검증 메서드들
+    // ===============================
+
+    /**
+     * 설정 유효성 검증
+     */
+    private boolean validateConfig(AppConfig config) {
+        if (!config.isValid()) {
+            UIFactory.showInfoDialog("❌ 설정 오류",
+                    "입력된 설정이 유효하지 않습니다.\n" +
+                            "폴더 경로와 숫자 값들을 확인해주세요.");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 저장 성공 메시지 생성
+     */
+    private String buildSaveSuccessMessage(AppConfig config) {
+        StringBuilder message = new StringBuilder("설정이 성공적으로 저장되었습니다.");
+
+        if (config.isEnableAIAnalysis() && config.getAiApiKey() != null) {
+            message.append("\n\n🤖 AI 분석 기능이 활성화됩니다.");
+        }
+
+        message.append("\n일부 설정은 애플리케이션을 다시 시작해야 적용됩니다.");
+        return message.toString();
+    }
+
+    // ===============================
+    // 🔧 헬퍼 및 유틸리티 메서드들
+    // ===============================
 
     /**
      * 설정 창 닫기
@@ -702,5 +1050,16 @@ public class SettingsController implements Initializable {
      */
     public void setStage(Stage stage) {
         this.settingsStage = stage;
+    }
+
+    /**
+     * Alert 표시 헬퍼 메서드
+     */
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }

@@ -1,5 +1,6 @@
 package com.smartfilemanager.controller;
 
+import com.smartfilemanager.model.AppConfig;
 import com.smartfilemanager.model.FileInfo;
 import com.smartfilemanager.model.ProcessingStatus;
 import com.smartfilemanager.service.*;
@@ -27,13 +28,14 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -63,12 +65,20 @@ public class MainController implements Initializable {
     @FXML private VBox fileDetailPanel;
     @FXML private Label detailContent;
 
+    @FXML private Label aiStatusIndicator;
+    @FXML private Label currentFileLabel;
+    @FXML private TableColumn<FileInfo, Double> confidenceColumn;
+    @FXML private MenuItem batchAIAnalysisMenuItem;
+    @FXML private Button aiAnalysisButton;
+
     // 서비스들
     private FileScanService fileScanService;
     private FileOrganizerService fileOrganizerService;
     private UndoService undoService;
     private DuplicateDetectorService duplicateDetectorService;
     private CleanupDetectorService cleanupDetectorService;
+    private ConfigService configService;
+    private FileAnalysisService fileAnalysisService;
 
     // 데이터
     private ObservableList<FileInfo> fileList;
@@ -106,11 +116,19 @@ public class MainController implements Initializable {
      * 서비스들 초기화
      */
     private void initializeServices() {
+        // 기존 서비스들
         fileScanService = new FileScanService(progressBar, statusLabel, progressLabel, fileList);
         fileOrganizerService = new FileOrganizerService(progressBar, statusLabel, progressLabel);
         undoService = new UndoService(progressBar, statusLabel, progressLabel);
         duplicateDetectorService = new DuplicateDetectorService();
         cleanupDetectorService = new CleanupDetectorService();
+
+        // 추가된 서비스들
+        configService = new ConfigService();
+        fileAnalysisService = new FileAnalysisService();
+
+        // AI 분석 초기화
+        initializeAIAnalysis();
     }
 
     /**
@@ -248,6 +266,26 @@ public class MainController implements Initializable {
     private void updateOrganizeButtonState() {
         boolean hasProcessableFiles = fileList.stream().anyMatch(file -> file.getStatus().isProcessable());
         organizeButton.setDisable(!hasProcessableFiles);
+    }
+
+    /**
+     * 상태 라벨 업데이트 (누락된 메서드 추가)
+     */
+    private void updateStatusLabel(String message) {
+        if (statusLabel != null) {
+            statusLabel.setText(message);
+        }
+    }
+
+    /**
+     * Alert 표시 (누락된 메서드 추가)
+     */
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     // =================
@@ -903,4 +941,626 @@ public class MainController implements Initializable {
         return (Stage) fileTable.getScene().getWindow();
     }
 
+    /**
+     * AI 분석 초기화 (완성된 버전)
+     */
+    private void initializeAIAnalysis() {
+        AppConfig config = configService.getCurrentConfig();
+
+        if (config.isEnableAIAnalysis() && config.getAiApiKey() != null) {
+            // AI 분석이 활성화된 경우
+            fileAnalysisService.refreshConfig(); // 설정 새로고침
+
+            boolean aiAvailable = fileAnalysisService.isAIAnalysisAvailable();
+            if (aiAvailable) {
+                updateStatusLabel("AI 분석이 활성화되었습니다 🤖");
+
+                // AI 상태를 UI에 표시 (있다면)
+                if (aiStatusIndicator != null) {
+                    aiStatusIndicator.setText("AI 활성");
+                    aiStatusIndicator.getStyleClass().removeAll("status-inactive", "status-error");
+                    aiStatusIndicator.getStyleClass().add("status-active");
+                }
+
+                System.out.println("[AI] ✅ AI 분석 시스템 준비 완료");
+            } else {
+                updateStatusLabel("AI 분석 설정에 문제가 있습니다");
+                showAIConfigurationAlert();
+            }
+        } else {
+            // AI 분석이 비활성화된 경우
+            if (aiStatusIndicator != null) {
+                aiStatusIndicator.setText("AI 비활성");
+                aiStatusIndicator.getStyleClass().removeAll("status-active", "status-error");
+                aiStatusIndicator.getStyleClass().add("status-inactive");
+            }
+            System.out.println("[INFO] AI 분석이 비활성화되어 있습니다");
+        }
+
+        // AI 관련 메뉴/버튼 상태 업데이트
+        updateAIMenusAndButtons();
+    }
+
+    /**
+     * AI 설정 문제 알림 (완성된 버전)
+     */
+    private void showAIConfigurationAlert() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("AI 분석 설정 확인");
+        alert.setHeaderText("AI 분석 기능에 문제가 있습니다");
+        alert.setContentText("AI 분석이 활성화되어 있지만 API 키가 유효하지 않습니다.\n설정에서 API 키를 확인해주세요.");
+
+        ButtonType settingsButton = new ButtonType("설정 열기");
+        ButtonType cancelButton = new ButtonType("나중에", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(settingsButton, cancelButton);
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == settingsButton) {
+            handleSettings();
+        }
+    }
+
+    /**
+     * 파일 스캔 시 AI 분석 상태 표시 (완성된 버전)
+     */
+    private void updateScanProgressWithAI(int current, int total, String currentFile, boolean aiEnabled) {
+        double progress = (double) current / total;
+        progressBar.setProgress(progress);
+
+        String statusText = String.format("스캔 중... %d/%d", current, total);
+        if (aiEnabled) {
+            statusText += " (AI 분석 포함) 🤖";
+        }
+
+        updateStatusLabel(statusText);
+
+        // 현재 처리 중인 파일명 표시
+        if (currentFileLabel != null && currentFile != null) {
+            String fileName = Paths.get(currentFile).getFileName().toString();
+            if (fileName.length() > 50) {
+                fileName = fileName.substring(0, 47) + "...";
+            }
+            currentFileLabel.setText("처리 중: " + fileName);
+        }
+    }
+
+    /**
+     * AI 분석 결과가 포함된 파일 테이블 업데이트 (완성된 버전)
+     */
+    private void updateFileTableWithAI() {
+        // 신뢰도 컬럼에 AI 분석 여부 표시
+        if (confidenceColumn != null) {
+            confidenceColumn.setCellFactory(column -> new TableCell<FileInfo, Double>() {
+                @Override
+                protected void updateItem(Double confidence, boolean empty) {
+                    super.updateItem(confidence, empty);
+
+                    if (empty || confidence == null) {
+                        setText(null);
+                        setGraphic(null);
+                        setStyle("");
+                    } else {
+                        // 신뢰도 백분율로 표시
+                        String confidenceText = String.format("%.0f%%", confidence * 100);
+
+                        // AI 분석이 적용된 파일인지 확인
+                        FileInfo fileInfo = getTableView().getItems().get(getIndex());
+                        boolean hasAIAnalysis = isAIAnalyzed(fileInfo);
+
+                        if (hasAIAnalysis) {
+                            confidenceText += " 🤖";
+                        }
+
+                        setText(confidenceText);
+
+                        // 신뢰도에 따른 색상 표시
+                        if (confidence >= 0.8) {
+                            setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;"); // 녹색
+                        } else if (confidence >= 0.6) {
+                            setStyle("-fx-text-fill: #f57c00; -fx-font-weight: bold;"); // 주황색
+                        } else {
+                            setStyle("-fx-text-fill: #d32f2f; -fx-font-weight: bold;"); // 빨간색
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    /**
+     * 파일이 AI 분석되었는지 확인 (완성된 버전)
+     */
+    private boolean isAIAnalyzed(FileInfo fileInfo) {
+        // AI 분석된 파일은 보통 키워드에 "ai-analyzed" 마커가 있음
+        if (fileInfo.getKeywords() != null && fileInfo.getKeywords().contains("ai-analyzed")) {
+            return true;
+        }
+
+        // 설명에 "AI 분석:" 이 포함된 경우
+        if (fileInfo.getDescription() != null &&
+                fileInfo.getDescription().contains("AI 분석:")) {
+            return true;
+        }
+
+        // 키워드 수가 많은 경우 (AI가 추가했을 가능성)
+        if (fileInfo.getKeywords() != null && fileInfo.getKeywords().size() > 8) {
+            return true;
+        }
+
+        // 신뢰도가 매우 높은 경우 (AI 분석 결과일 가능성)
+        return fileInfo.getConfidenceScore() > 0.9;
+    }
+
+    /**
+     * AI 분석 통계 표시 (완성된 버전)
+     */
+    private void updateStatisticsWithAI() {
+        long totalFiles = fileList.size();
+        long aiAnalyzedFiles = fileList.stream()
+                .mapToLong(file -> isAIAnalyzed(file) ? 1 : 0)
+                .sum();
+
+        long organizedFiles = fileList.stream()
+                .mapToLong(file -> file.getStatus() == ProcessingStatus.ORGANIZED ? 1 : 0)
+                .sum();
+
+        long totalSize = fileList.stream()
+                .mapToLong(FileInfo::getFileSize)
+                .sum();
+
+        // AI 분석 비율 계산
+        double aiRatio = totalFiles > 0 ? (double) aiAnalyzedFiles / totalFiles * 100 : 0;
+
+        String statsText;
+        if (aiAnalyzedFiles > 0) {
+            statsText = String.format(
+                    "총 %d개 파일 | %d개 정리됨 | 🤖 AI 분석: %d개 (%.0f%%) | 총 크기: %s",
+                    totalFiles, organizedFiles, aiAnalyzedFiles, aiRatio, formatFileSize(totalSize)
+            );
+        } else {
+            statsText = String.format(
+                    "총 %d개 파일 | %d개 정리됨 | 총 크기: %s",
+                    totalFiles, organizedFiles, formatFileSize(totalSize)
+            );
+        }
+
+        statisticsLabel.setText(statsText);
+    }
+
+    /**
+     * AI 분석 배치 실행 (완성된 버전)
+     */
+    @FXML
+    private void handleBatchAIAnalysis() {
+        List<FileInfo> unanalyzedFiles = fileList.stream()
+                .filter(file -> !isAIAnalyzed(file))
+                .filter(file -> file.getStatus() != ProcessingStatus.FAILED)
+                .collect(Collectors.toList());
+
+        if (unanalyzedFiles.isEmpty()) {
+            showAlert("알림", "AI 분석이 필요한 파일이 없습니다.\n모든 파일이 이미 분석되었거나 AI 분석에 적합하지 않습니다.", Alert.AlertType.INFORMATION);
+            return;
+        }
+
+        // AI 분석 가능 여부 확인
+        if (!fileAnalysisService.isAIAnalysisAvailable()) {
+            showAlert("오류", "AI 분석이 활성화되지 않았습니다.\n설정에서 AI 분석을 활성화하고 유효한 API 키를 입력해주세요.", Alert.AlertType.ERROR);
+            return;
+        }
+
+        // 비용 계산 및 확인 다이얼로그
+        double estimatedCost = unanalyzedFiles.size() * 0.005; // 파일당 약 0.005원
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("AI 배치 분석");
+        confirmAlert.setHeaderText(unanalyzedFiles.size() + "개 파일을 AI로 분석하시겠습니까?");
+
+        String contentText = String.format(
+                "🤖 AI 분석 대상: %d개 파일\n" +
+                        "💰 예상 비용: 약 %.3f원 (파일당 0.005원)\n" +
+                        "⏱️ 예상 시간: %d~%d분\n\n" +
+                        "⚠️ 이 작업은 OpenAI API를 사용하며 실제 비용이 발생할 수 있습니다.\n" +
+                        "계속하시겠습니까?",
+                unanalyzedFiles.size(),
+                estimatedCost,
+                unanalyzedFiles.size() / 30, // 30개/분 가정
+                unanalyzedFiles.size() / 20  // 20개/분 가정
+        );
+
+        confirmAlert.setContentText(contentText);
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            runBatchAIAnalysisAsync(unanalyzedFiles);
+        }
+    }
+
+    /**
+     * 비동기 AI 배치 분석 실행 (완성된 버전)
+     */
+    private void runBatchAIAnalysisAsync(List<FileInfo> files) {
+        // 버튼 비활성화
+        if (aiAnalysisButton != null) {
+            aiAnalysisButton.setDisable(true);
+            aiAnalysisButton.setText("AI 분석 중...");
+        }
+
+        Task<Integer> batchAnalysisTask = new Task<Integer>() {
+            @Override
+            protected Integer call() throws Exception {
+                int processed = 0;
+                int successful = 0;
+
+                updateMessage("AI 배치 분석을 시작합니다...");
+
+                for (FileInfo file : files) {
+                    try {
+                        // 개별 파일 재분석 (AI 포함)
+                        FileInfo reanalyzed = fileAnalysisService.analyzeFile(file.getFilePath());
+
+                        if (reanalyzed != null && reanalyzed.getStatus() != ProcessingStatus.FAILED) {
+                            // 분석 결과를 기존 FileInfo에 적용
+                            updateFileInfoFromReanalysis(file, reanalyzed);
+                            successful++;
+                        }
+
+                        processed++;
+
+                        // 진행률 업데이트
+                        final int currentProgress = processed;
+                        final int successCount = successful;
+
+                        Platform.runLater(() -> {
+                            double progress = (double) currentProgress / files.size();
+                            progressBar.setProgress(progress);
+
+                            String statusText = String.format("AI 분석 중... %d/%d (성공: %d개) 🤖",
+                                    currentProgress, files.size(), successCount);
+                            updateStatusLabel(statusText);
+
+                            // 현재 파일명 표시
+                            if (currentFileLabel != null) {
+                                currentFileLabel.setText("분석 중: " + file.getFileName());
+                            }
+
+                            // 테이블 갱신
+                            fileTable.refresh();
+                        });
+
+                        // API 호출 제한을 위한 지연 (TPM 제한 고려)
+                        Thread.sleep(300); // 0.3초 지연으로 안전하게
+
+                    } catch (InterruptedException e) {
+                        System.out.println("[INFO] AI 배치 분석이 중단되었습니다");
+                        Thread.currentThread().interrupt();
+                        break;
+                    } catch (Exception e) {
+                        System.err.println("[ERROR] AI 배치 분석 중 오류: " + file.getFileName() + " - " + e.getMessage());
+                    }
+                }
+
+                return successful;
+            }
+
+            @Override
+            protected void succeeded() {
+                Platform.runLater(() -> {
+                    Integer successCount = getValue();
+
+                    updateStatusLabel("AI 배치 분석 완료! 🎉");
+                    progressBar.setProgress(1.0);
+
+                    if (currentFileLabel != null) {
+                        currentFileLabel.setText("");
+                    }
+
+                    updateStatisticsWithAI();
+                    fileTable.refresh();
+
+                    // 결과 알림
+                    String resultMessage = String.format(
+                            "🎉 AI 배치 분석이 완료되었습니다!\n\n" +
+                                    "✅ 성공적으로 분석된 파일: %d개\n" +
+                                    "❌ 분석 실패한 파일: %d개\n\n" +
+                                    "🤖 AI 분석을 통해 파일 분류 정확도가 향상되었습니다.",
+                            successCount, files.size() - successCount
+                    );
+
+                    showAlert("완료", resultMessage, Alert.AlertType.INFORMATION);
+
+                    // 버튼 상태 복원
+                    if (aiAnalysisButton != null) {
+                        aiAnalysisButton.setDisable(false);
+                        aiAnalysisButton.setText("AI 배치 분석");
+                    }
+                });
+            }
+
+            @Override
+            protected void failed() {
+                Platform.runLater(() -> {
+                    updateStatusLabel("AI 배치 분석 실패");
+                    progressBar.setProgress(0);
+
+                    if (currentFileLabel != null) {
+                        currentFileLabel.setText("");
+                    }
+
+                    Throwable exception = getException();
+                    String errorMessage = "AI 배치 분석 중 오류가 발생했습니다:\n" +
+                            (exception != null ? exception.getMessage() : "알 수 없는 오류");
+
+                    showAlert("오류", errorMessage, Alert.AlertType.ERROR);
+
+                    // 버튼 상태 복원
+                    if (aiAnalysisButton != null) {
+                        aiAnalysisButton.setDisable(false);
+                        aiAnalysisButton.setText("AI 배치 분석");
+                    }
+                });
+            }
+        };
+
+        Thread batchThread = new Thread(batchAnalysisTask);
+        batchThread.setDaemon(true);
+        batchThread.start();
+    }
+
+    /**
+     * 재분석 결과를 기존 FileInfo에 적용 (완성된 버전)
+     */
+    private void updateFileInfoFromReanalysis(FileInfo original, FileInfo reanalyzed) {
+        // AI 분석으로 향상된 정보들을 기존 객체에 적용
+        if (reanalyzed.getDetectedCategory() != null) {
+            original.setDetectedCategory(reanalyzed.getDetectedCategory());
+        }
+
+        if (reanalyzed.getDetectedSubCategory() != null) {
+            original.setDetectedSubCategory(reanalyzed.getDetectedSubCategory());
+        }
+
+        if (reanalyzed.getConfidenceScore() > original.getConfidenceScore()) {
+            original.setConfidenceScore(reanalyzed.getConfidenceScore());
+        }
+
+        if (reanalyzed.getDescription() != null) {
+            // 기존 설명과 AI 분석 결과 결합
+            String currentDesc = original.getDescription();
+            if (currentDesc != null) {
+                original.setDescription(currentDesc + "\n\n" + reanalyzed.getDescription());
+            } else {
+                original.setDescription(reanalyzed.getDescription());
+            }
+        }
+
+        if (reanalyzed.getKeywords() != null && !reanalyzed.getKeywords().isEmpty()) {
+            List<String> originalKeywords = original.getKeywords();
+            if (originalKeywords == null) {
+                originalKeywords = new ArrayList<>();
+                original.setKeywords(originalKeywords);
+            }
+
+            // 새로운 키워드들 추가 (중복 제거)
+            for (String keyword : reanalyzed.getKeywords()) {
+                if (!originalKeywords.contains(keyword)) {
+                    originalKeywords.add(keyword);
+                }
+            }
+        }
+
+        if (reanalyzed.getSuggestedPath() != null) {
+            original.setSuggestedPath(reanalyzed.getSuggestedPath());
+        }
+
+        original.setStatus(ProcessingStatus.ANALYZED);
+        original.setProcessedAt(LocalDateTime.now());
+    }
+
+    /**
+     * AI 분석 설정 상태에 따른 메뉴/버튼 활성화 (완성된 버전)
+     */
+    private void updateAIMenusAndButtons() {
+        boolean aiAvailable = fileAnalysisService.isAIAnalysisAvailable();
+
+        // AI 관련 메뉴 항목들 활성화/비활성화
+        if (batchAIAnalysisMenuItem != null) {
+            batchAIAnalysisMenuItem.setDisable(!aiAvailable);
+        }
+
+        if (aiAnalysisButton != null) {
+            aiAnalysisButton.setDisable(!aiAvailable);
+            aiAnalysisButton.setText(aiAvailable ? "AI 배치 분석" : "AI 비활성");
+        }
+
+        // 툴팁 업데이트
+        if (aiAnalysisButton != null) {
+            String tooltipText = aiAvailable ?
+                    "선택된 파일들을 AI로 재분석합니다\n(OpenAI API 사용, 비용 발생 가능)" :
+                    "AI 분석을 사용하려면 설정에서 활성화해주세요";
+            aiAnalysisButton.setTooltip(new Tooltip(tooltipText));
+        }
+    }
+
+    /**
+     * 설정이 변경된 후 AI 상태 새로고침 (완성된 버전)
+     */
+    public void refreshAIConfiguration() {
+        System.out.println("[AI] AI 설정 새로고침 시작");
+
+        initializeAIAnalysis();
+        updateAIMenusAndButtons();
+        updateFileTableWithAI();
+        updateStatisticsWithAI();
+
+        System.out.println("[AI] AI 설정 새로고침 완료");
+    }
+
+    /**
+     * AI 관련 컨텍스트 메뉴 추가 (완성된 버전)
+     */
+    private void setupAIContextMenu() {
+        if (fileTable != null) {
+            ContextMenu contextMenu = new ContextMenu();
+
+            // 기존 컨텍스트 메뉴 항목들...
+
+            // AI 분석 메뉴 항목
+            MenuItem aiAnalyzeItem = new MenuItem("🤖 AI로 재분석");
+            aiAnalyzeItem.setOnAction(e -> {
+                FileInfo selectedFile = fileTable.getSelectionModel().getSelectedItem();
+                if (selectedFile != null) {
+                    analyzeSelectedFileWithAI(selectedFile);
+                }
+            });
+
+            // AI 분석 상태에 따라 활성화/비활성화
+            aiAnalyzeItem.setDisable(!fileAnalysisService.isAIAnalysisAvailable());
+
+            contextMenu.getItems().add(aiAnalyzeItem);
+            fileTable.setContextMenu(contextMenu);
+        }
+    }
+
+    /**
+     * 선택된 파일을 AI로 재분석 (완성된 버전)
+     */
+    private void analyzeSelectedFileWithAI(FileInfo selectedFile) {
+        if (!fileAnalysisService.isAIAnalysisAvailable()) {
+            showAlert("오류", "AI 분석이 활성화되지 않았습니다.", Alert.AlertType.ERROR);
+            return;
+        }
+
+        // 확인 다이얼로그
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("AI 재분석");
+        confirmAlert.setHeaderText("선택된 파일을 AI로 재분석하시겠습니까?");
+        confirmAlert.setContentText("파일: " + selectedFile.getFileName() + "\n예상 비용: 약 0.005원");
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+
+            Task<FileInfo> analyzeTask = new Task<FileInfo>() {
+                @Override
+                protected FileInfo call() throws Exception {
+                    updateMessage("AI 분석 중...");
+                    return fileAnalysisService.analyzeFile(selectedFile.getFilePath());
+                }
+
+                @Override
+                protected void succeeded() {
+                    Platform.runLater(() -> {
+                        FileInfo reanalyzed = getValue();
+                        if (reanalyzed != null && reanalyzed.getStatus() != ProcessingStatus.FAILED) {
+                            updateFileInfoFromReanalysis(selectedFile, reanalyzed);
+                            fileTable.refresh();
+                            updateStatisticsWithAI();
+
+                            showAlert("완료", "AI 재분석이 완료되었습니다.\n신뢰도: " +
+                                            String.format("%.0f%%", selectedFile.getConfidenceScore() * 100),
+                                    Alert.AlertType.INFORMATION);
+                        } else {
+                            showAlert("실패", "AI 재분석에 실패했습니다.", Alert.AlertType.ERROR);
+                        }
+                    });
+                }
+
+                @Override
+                protected void failed() {
+                    Platform.runLater(() -> {
+                        showAlert("오류", "AI 재분석 중 오류가 발생했습니다:\n" +
+                                getException().getMessage(), Alert.AlertType.ERROR);
+                    });
+                }
+            };
+
+            Thread analyzeThread = new Thread(analyzeTask);
+            analyzeThread.setDaemon(true);
+            analyzeThread.start();
+        }
+    }
+
+    /**
+     * AI 분석 비용 계산기 (완성된 버전)
+     */
+    private double calculateAICost(int fileCount) {
+        // 파일당 평균 비용 (추정치)
+        double costPerFile = 0.005; // 0.005원
+        return fileCount * costPerFile;
+    }
+
+    /**
+     * AI 분석 결과 요약 표시 (완성된 버전)
+     */
+    private void showAIAnalysisSummary() {
+        long totalFiles = fileList.size();
+        long aiAnalyzedFiles = fileList.stream()
+                .filter(this::isAIAnalyzed)
+                .count();
+
+        if (aiAnalyzedFiles == 0) {
+            showAlert("정보", "AI 분석된 파일이 없습니다.", Alert.AlertType.INFORMATION);
+            return;
+        }
+
+        // 카테고리별 분석 결과
+        Map<String, Long> categoryStats = fileList.stream()
+                .filter(this::isAIAnalyzed)
+                .collect(Collectors.groupingBy(
+                        f -> f.getDetectedCategory() != null ? f.getDetectedCategory() : "Unknown",
+                        Collectors.counting()
+                ));
+
+        // 평균 신뢰도 계산
+        double avgConfidence = fileList.stream()
+                .filter(this::isAIAnalyzed)
+                .mapToDouble(FileInfo::getConfidenceScore)
+                .average()
+                .orElse(0.0);
+
+        StringBuilder summary = new StringBuilder();
+        summary.append("🤖 AI 분석 결과 요약\n\n");
+        summary.append("📊 분석된 파일: ").append(aiAnalyzedFiles).append("개 / ").append(totalFiles).append("개 총\n");
+        summary.append("📈 평균 신뢰도: ").append(String.format("%.1f%%", avgConfidence * 100)).append("\n\n");
+        summary.append("📂 카테고리별 분포:\n");
+
+        categoryStats.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .forEach(entry -> summary.append("  • ").append(entry.getKey()).append(": ").append(entry.getValue()).append("개\n"));
+
+        double estimatedCost = calculateAICost((int) aiAnalyzedFiles);
+        summary.append("\n💰 예상 사용 비용: 약 ").append(String.format("%.3f", estimatedCost)).append("원");
+
+        Alert summaryAlert = new Alert(Alert.AlertType.INFORMATION);
+        summaryAlert.setTitle("AI 분석 요약");
+        summaryAlert.setHeaderText("AI 분석 결과 요약");
+        summaryAlert.setContentText(summary.toString());
+        summaryAlert.getDialogPane().setPrefWidth(400);
+        summaryAlert.showAndWait();
+    }
+
+    /**
+     * AI 분석 메뉴 항목 핸들러
+     */
+    @FXML
+    private void handleShowAISummary() {
+        showAIAnalysisSummary();
+    }
+
+    /**
+     * AI 상태 표시 업데이트
+     */
+    private void updateAIStatusDisplay() {
+        if (fileAnalysisService.isAIAnalysisAvailable()) {
+            // 상태바나 라벨에 AI 상태 표시
+            if (aiStatusIndicator != null) {
+                aiStatusIndicator.setText("🤖 AI 활성");
+                aiStatusIndicator.setStyle("-fx-text-fill: #2e7d32;");
+            }
+        } else {
+            if (aiStatusIndicator != null) {
+                aiStatusIndicator.setText("AI 비활성");
+                aiStatusIndicator.setStyle("-fx-text-fill: #757575;");
+            }
+        }
+    }
 }

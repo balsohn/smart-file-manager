@@ -52,6 +52,14 @@ public class AppConfig {
     private boolean debugMode;                 // 디버그 모드
 
     /**
+     * AI 분석 관련 설정
+     */
+    private String aiModel;                    // AI 모델명 (gpt-3.5-turbo, gpt-4 등)
+
+
+
+
+    /**
      * 기본 설정값으로 AppConfig 생성
      */
     public static AppConfig createDefault() {
@@ -92,6 +100,11 @@ public class AppConfig {
                 .enableContentAnalysis(true)        // 내용 분석은 활성화
                 .enableAIAnalysis(false)             // AI 분석은 비활성화 (API 키 필요)
                 .debugMode(false)                    // 디버그 모드 비활성화
+
+                // AI
+                .enableAIAnalysis(false)             // AI 분석은 비활성화 (API 키 필요)
+                .aiApiKey(null)                      // API 키 없음
+                .aiModel("gpt-3.5-turbo")           // 기본 AI 모델
 
                 .build();
     }

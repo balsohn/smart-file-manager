@@ -23,6 +23,48 @@ dependencies {
 
     // SQLite JDBC 드라이버 추가
     implementation 'org.xerial:sqlite-jdbc:3.44.1.0'
+
+    // === AI 분석용 새로운 의존성들 ===
+
+    // HTTP 클라이언트 (Java 11 내장 HttpClient 사용하므로 추가 의존성 불필요)
+
+    // JSON 처리 (Gson) - 이미 포함되어 있음
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    // Apache Tika - 파일 내용 분석용 (선택사항)
+    implementation 'org.apache.tika:tika-core:2.9.1'
+    implementation 'org.apache.tika:tika-parsers-standard-package:2.9.1'
+
+    // 로깅 라이브러리 (디버깅용)
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'ch.qos.logback:logback-classic:1.4.11'
+
+    // 테스트용 의존성
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+    testImplementation 'org.mockito:mockito-core:5.6.0'
+}
+
+// 컴파일 옵션
+compileJava {
+    options.compilerArgs += ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED']
+    options.compilerArgs += ['--add-exports', 'java.base/sun.net.dns=ALL-UNNAMED']
+}
+
+// 런타임 JVM 옵션
+run {
+    jvmArgs = [
+            '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+            '--add-opens', 'java.base/java.net=ALL-UNNAMED',
+            '--add-opens', 'java.base/java.util=ALL-UNNAMED'
+    ]
+
+    // AI 분석 관련 시스템 속성
+    systemProperty 'ai.analysis.timeout', '30000'  // 30초 타임아웃
+    systemProperty 'ai.analysis.retries', '3'      // 3회 재시도
+
+    // HTTP 클라이언트 설정
+    systemProperty 'jdk.httpclient.HttpClient.log', 'errors,requests,headers'
 }
 
 application {
@@ -40,4 +82,20 @@ tasks.withType(JavaCompile) {
 
 test {
     useJUnitPlatform()
+
+    // AI 테스트용 설정
+    systemProperty 'test.ai.enabled', 'false'  // 기본적으로 AI 테스트 비활성화
+    systemProperty 'test.ai.apikey', ''        // CI/CD에서 API 키 주입 가능
+}
+
+// JAR 빌드 시 AI 분석 설정 포함
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': 'Smart File Manager',
+                'Implementation-Version': version,
+                'AI-Analysis-Enabled': 'true',
+                'Supported-AI-Models': 'gpt-3.5-turbo,gpt-4'
+        )
+    }
 }
