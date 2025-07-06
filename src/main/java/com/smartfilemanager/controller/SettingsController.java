@@ -83,6 +83,9 @@ public class SettingsController implements Initializable {
         // 현재 설정 값으로 UI 초기화
         loadConfigToUI(originalConfig);
 
+        setInitialUIStates();
+        updateUIStatesAfterLoad();
+
         System.out.println("[INFO] 설정 화면이 초기화되었습니다.");
     }
 
@@ -202,45 +205,6 @@ public class SettingsController implements Initializable {
                 languageComboBox.setValue("한국어 (ko)");
                 break;
         }
-    }
-
-    /**
-     * UI에서 설정 수집
-     */
-    private AppConfig collectConfigFromUI() {
-        AppConfig config = new AppConfig();
-
-        // 기본 설정
-        config.setDefaultScanFolder(defaultScanFolderField.getText().trim());
-        config.setOrganizationRootFolder(organizationFolderField.getText().trim());
-        config.setAutoOrganizeEnabled(autoOrganizeCheckBox.isSelected());
-        config.setRealTimeMonitoring(realTimeMonitoringCheckBox.isSelected());
-        config.setShowNotifications(showNotificationsCheckBox.isSelected());
-        config.setOrganizeByDate(organizeByDateCheckBox.isSelected());
-        config.setCreateSubfolders(createSubfoldersCheckBox.isSelected());
-        config.setBackupBeforeOrganizing(backupBeforeOrganizingCheckBox.isSelected());
-
-        // 중복 파일 설정
-        config.setEnableDuplicateDetection(enableDuplicateDetectionCheckBox.isSelected());
-        config.setAutoResolveDuplicates(autoResolveDuplicatesCheckBox.isSelected());
-        config.setDuplicateResolutionStrategy(getDuplicateStrategyFromComboBox());
-
-        // 성능 설정
-        config.setMaxFileSizeForAnalysis(maxFileSizeSpinner.getValue());
-        config.setMonitoringInterval(monitoringIntervalSpinner.getValue());
-        config.setMaxFileCount(maxFileCountSpinner.getValue());
-        config.setEnableContentAnalysis(enableContentAnalysisCheckBox.isSelected());
-        config.setEnableAIAnalysis(enableAIAnalysisCheckBox.isSelected());
-        config.setAiApiKey(aiApiKeyField.getText().trim());
-
-        // UI 설정
-        config.setLanguage(getLanguageFromComboBox());
-        config.setTheme(getThemeFromComboBox());
-        config.setMinimizeToTray(minimizeToTrayCheckBox.isSelected());
-        config.setStartWithWindows(startWithWindowsCheckBox.isSelected());
-        config.setDebugMode(debugModeCheckBox.isSelected());
-
-        return config;
     }
 
     /**

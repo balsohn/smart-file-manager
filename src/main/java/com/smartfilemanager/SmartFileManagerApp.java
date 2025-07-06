@@ -1,5 +1,6 @@
 package com.smartfilemanager;
 
+import com.smartfilemanager.controller.MainController;
 import com.smartfilemanager.model.AppConfig;
 import com.smartfilemanager.service.ConfigService;
 import com.smartfilemanager.ui.SystemTrayManager;
@@ -40,6 +41,8 @@ public class SmartFileManagerApp extends Application {
             // 1. FXML 파일 로드
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/main.fxml"));
             Parent root = loader.load();
+
+            MainController mainController = loader.getController();
 
             System.out.println("[SUCCESS] FXML 로드 완료");
 

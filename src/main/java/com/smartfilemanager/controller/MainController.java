@@ -19,6 +19,9 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
@@ -86,6 +89,9 @@ public class MainController implements Initializable {
 
         // 파일 상세 정보 관리자 초기화
         fileDetailManager = new FileDetailManager(fileDetailPanel);
+
+        // 단축키 설정
+        setupKeyboardShortcuts();
 
         // 리스너 설정
         setupListeners();
@@ -344,36 +350,6 @@ public class MainController implements Initializable {
         startCleanupDetection();
     }
 
-    @FXML
-    private void handleOpenSettings() {
-        System.out.println("[INFO] 설정 버튼 클릭");
-
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/settings.fxml"));
-            Parent settingsRoot = loader.load();
-
-            SettingsController settingsController = loader.getController();
-
-            Stage settingsStage = new Stage();
-            settingsStage.setTitle("⚙️ Smart File Manager - 설정");
-            settingsStage.setScene(new Scene(settingsRoot, 800, 600));
-            settingsStage.initModality(Modality.APPLICATION_MODAL);
-            settingsStage.initOwner(getCurrentStage());
-            settingsStage.setResizable(true);
-            settingsStage.setMinWidth(700);
-            settingsStage.setMinHeight(500);
-
-            settingsController.setStage(settingsStage);
-            settingsStage.showAndWait();
-
-            System.out.println("[INFO] 설정 창 닫힘");
-
-        } catch (IOException e) {
-            System.err.println("[ERROR] 설정 창 로드 실패: " + e.getMessage());
-            UIFactory.showInfoDialog("❌ 오류", "설정 창을 열 수 없습니다:\n" + e.getMessage());
-        }
-    }
-
     /**
      * 정보(About) 창 표시
      */
@@ -450,59 +426,90 @@ public class MainController implements Initializable {
      * 키보드 단축키 F1으로 도움말 열기
      */
     private void setupKeyboardShortcuts() {
-        // 씬에 키 이벤트 핸들러 추가
         Platform.runLater(() -> {
-            if (getCurrentStage() != null && getCurrentStage().getScene() != null) {
-                getCurrentStage().getScene().setOnKeyPressed(event -> {
-                    switch (event.getCode()) {
-                        case F1:
-                            handleHelpTopics();
-                            event.consume();
-                            break;
-                        case F5:
-                            handleScanFiles();
-                            event.consume();
-                            break;
-                        case F6:
-                            handleOrganizeFiles();
-                            event.consume();
-                            break;
-                        case F7:
-                            handleFindDuplicates();
-                            event.consume();
-                            break;
-                        case F8:
-                            handleCleanupFiles();
-                            event.consume();
-                            break;
-                    }
+            Stage stage = getCurrentStage();
+            if (stage != null && stage.getScene() != null) {
+                Scene scene = stage.getScene();
 
-                    // Ctrl 조합 키들
-                    if (event.isControlDown()) {
-                        switch (event.getCode()) {
-                            case O:
-                                handleOpenFolder();
-                                event.consume();
-                                break;
-                            case COMMA:
-                                handleSettings();
-                                event.consume();
-                                break;
-                            case I:
-                                handleAbout();
-                                event.consume();
-                                break;
-                            case Z:
-                                handleUndoOrganization();
-                                event.consume();
-                                break;
-                            case Q:
-                                Platform.exit();
-                                event.consume();
-                                break;
+                // Scene의 Accelerators를 사용하는 방식 (더 표준적)
+
+                // F1: 도움말
+                scene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.F1),
+                        () -> {
+                            System.out.println("[SHORTCUT] F1 - 도움말 실행");
+                            handleHelpTopics();
                         }
-                    }
-                });
+                );
+
+                // F5: 파일 스캔
+                scene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.F5),
+                        () -> {
+                            System.out.println("[SHORTCUT] F5 - 파일 스캔 실행");
+                            handleScanFiles();
+                        }
+                );
+
+                // F6: 파일 정리
+                scene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.F6),
+                        () -> {
+                            System.out.println("[SHORTCUT] F6 - 파일 정리 실행");
+                            handleOrganizeFiles();
+                        }
+                );
+
+                // F7: 중복 파일 찾기
+                scene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.F7),
+                        () -> {
+                            System.out.println("[SHORTCUT] F7 - 중복 파일 찾기 실행");
+                            handleFindDuplicates();
+                        }
+                );
+
+                // F8: 불필요한 파일 정리
+                scene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.F8),
+                        () -> {
+                            System.out.println("[SHORTCUT] F8 - 불필요한 파일 정리 실행");
+                            handleCleanupFiles();
+                        }
+                );
+
+                // Ctrl+O: 폴더 열기
+                scene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.O, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            System.out.println("[SHORTCUT] Ctrl+O - 폴더 열기 실행");
+                            handleOpenFolder();
+                        }
+                );
+
+                // Ctrl+Z: 되돌리기
+                scene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN),
+                        () -> {
+                            System.out.println("[SHORTCUT] Ctrl+Z - 되돌리기 실행");
+                            handleUndoOrganization();
+                        }
+                );
+
+                // Ctrl+Shift+S: 설정
+                scene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN),
+                        () -> {
+                            System.out.println("[SHORTCUT] Ctrl+Shift+S - 설정 실행");
+                            handleSettings();
+                        }
+                );
+
+                System.out.println("[SUCCESS] 키보드 단축키 설정 완료");
+                System.out.println("          F1=도움말, F5=스캔, F6=정리, F7=중복찾기, F8=정리");
+                System.out.println("          Ctrl+O=폴더열기, Ctrl+Z=되돌리기, Ctrl+Shift+S=설정");
+            } else {
+                System.out.println("[WARNING] 씬이 준비되지 않아 키보드 단축키를 나중에 설정합니다");
             }
         });
     }
