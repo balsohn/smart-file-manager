@@ -104,7 +104,7 @@ public class FileOrganizerService {
     /**
      * 단일 파일 정리
      */
-    private void organizeFile(FileInfo fileInfo, String targetRootPath) throws IOException {
+    public void organizeFile(FileInfo fileInfo, String targetRootPath) throws IOException {
         // 1. 대상 폴더 경로 결정
         String categoryPath = determineTargetPath(fileInfo, targetRootPath);
 

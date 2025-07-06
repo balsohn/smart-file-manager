@@ -387,6 +387,45 @@ task createAIDemo {
     }
 }
 
+// 실시간 모니터링 테스트
+task monitoringTest(type: JavaExec) {
+    group = 'verification'
+    description = '실시간 폴더 모니터링 기능을 테스트합니다'
+
+    dependsOn 'compileJava', 'compileTestJava'
+
+    classpath = sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+    mainClass = 'com.smartfilemanager.test.MonitoringSystemTest'
+
+    jvmArgs = [
+            '--module-path', classpath.asPath,
+            '--add-modules', 'javafx.controls,javafx.fxml,javafx.graphics,javafx.base',
+            '-Dfile.encoding=UTF-8',
+            '-Djava.awt.headless=false'
+    ]
+
+    systemProperties = [
+            'test.mode': 'monitoring',
+            'test.folder': System.getProperty("user.home") + "/Downloads"
+    ]
+
+    doFirst {
+        println ""
+        println "🔍 Smart File Manager - 실시간 모니터링 테스트"
+        println "=" * 55
+        println "📁 모니터링 폴더: ${systemProperties['test.folder']}"
+        println "🎯 파일을 폴더에 추가하면 자동으로 감지됩니다"
+        println "⚡ 자동 정리 기능도 함께 테스트됩니다"
+        println ""
+    }
+
+    doLast {
+        println ""
+        println "🎉 모니터링 테스트 완료!"
+        println "실제 사용 시에는 메인 애플리케이션의 모니터링 버튼을 사용하세요."
+    }
+}
+
 // 모든 데모 실행
 task runAllDemos {
     group = 'demonstration'
@@ -399,6 +438,33 @@ task runAllDemos {
         println "🎉 모든 데모 실행 완료!"
         println "1. 통계 시스템 테스트 ✅"
         println "2. AI 분석 데모 ✅"
+    }
+}
+
+// 전체 애플리케이션 실행 (모니터링 포함)
+task runApp(type: JavaExec) {
+    group = 'application'
+    description = '전체 애플리케이션을 실행합니다 (모니터링 기능 포함)'
+
+    dependsOn 'compileJava'
+
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.smartfilemanager.SmartFileManagerApp'
+
+    jvmArgs = [
+            '--module-path', classpath.asPath,
+            '--add-modules', 'javafx.controls,javafx.fxml,javafx.graphics,javafx.base',
+            '-Dfile.encoding=UTF-8'
+    ]
+
+    doFirst {
+        println ""
+        println "🚀 Smart File Manager 실행"
+        println "=" * 40
+        println "✅ 실시간 모니터링 기능 포함"
+        println "✅ 통계 시스템 포함"
+        println "✅ AI 분석 데모 포함"
+        println ""
     }
 }
 

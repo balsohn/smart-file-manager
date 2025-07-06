@@ -8,6 +8,8 @@ import com.smartfilemanager.ui.AboutDialog;
 import com.smartfilemanager.ui.FileDetailManager;
 import com.smartfilemanager.ui.HelpDialog;
 import com.smartfilemanager.ui.UIFactory;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -27,6 +29,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.awt.event.ActionEvent;
 import java.io.File;
@@ -37,6 +40,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.smartfilemanager.ui.UIFactory.showInfoDialog;
 
 /**
  * 메인 화면 컨트롤러
@@ -71,6 +76,10 @@ public class MainController implements Initializable {
     @FXML private MenuItem batchAIAnalysisMenuItem;
     @FXML private Button aiAnalysisButton;
 
+    @FXML private Button monitoringToggleButton;
+    @FXML private Label monitoringStatusLabel;
+    @FXML private Label monitoringFolderLabel;
+
     // 서비스들
     private FileScanService fileScanService;
     private FileOrganizerService fileOrganizerService;
@@ -79,6 +88,8 @@ public class MainController implements Initializable {
     private CleanupDetectorService cleanupDetectorService;
     private ConfigService configService;
     private FileAnalysisService fileAnalysisService;
+    private FileWatcherService fileWatcherService;
+    private boolean isMonitoringActive = false;
 
     // 데이터
     private ObservableList<FileInfo> fileList;
@@ -129,6 +140,18 @@ public class MainController implements Initializable {
 
         // AI 분석 초기화
         initializeAIAnalysis();
+    }
+
+    private void initializeFileWatcher() {
+        fileWatcherService = new FileWatcherService();
+
+        // 콜백 설정
+        fileWatcherService.setStatusUpdateCallback(this::updateMonitoringStatus);
+        fileWatcherService.setNewFileCallback(this::handleNewFileDetected);
+        fileWatcherService.setFileList(fileList);
+
+        // UI 초기 상태 설정
+        updateMonitoringUI();
     }
 
     /**
@@ -332,7 +355,7 @@ public class MainController implements Initializable {
                 .collect(Collectors.toList());
 
         if (filesToOrganize.isEmpty()) {
-            UIFactory.showInfoDialog("📋 정리할 파일 없음",
+            showInfoDialog("📋 정리할 파일 없음",
                     "먼저 폴더를 스캔해서 정리할 파일을 찾아주세요.");
             return;
         }
@@ -351,7 +374,7 @@ public class MainController implements Initializable {
         List<FileInfo> undoableFiles = UndoService.getUndoableFiles(new ArrayList<>(fileList));
 
         if (undoableFiles.isEmpty()) {
-            UIFactory.showInfoDialog("↩️ 되돌릴 파일 없음",
+            showInfoDialog("↩️ 되돌릴 파일 없음",
                     "정리된 파일이 없습니다.\n파일을 먼저 정리한 후 되돌리기를 사용할 수 있습니다.");
             return;
         }
@@ -367,7 +390,7 @@ public class MainController implements Initializable {
         System.out.println("[INFO] 중복 파일 찾기 버튼 클릭");
 
         if (fileList.isEmpty()) {
-            UIFactory.showInfoDialog("📋 파일 없음",
+            showInfoDialog("📋 파일 없음",
                     "먼저 폴더를 스캔해서 중복 파일을 찾아주세요.");
             return;
         }
@@ -380,7 +403,7 @@ public class MainController implements Initializable {
         System.out.println("[INFO] 불필요한 파일 정리 버튼 클릭");
 
         if (fileList.isEmpty()) {
-            UIFactory.showInfoDialog("📋 파일 없음",
+            showInfoDialog("📋 파일 없음",
                     "먼저 폴더를 스캔해서 정리할 파일을 찾아주세요.");
             return;
         }
@@ -398,7 +421,7 @@ public class MainController implements Initializable {
             AboutDialog.show(getCurrentStage());
         } catch (Exception e) {
             System.err.println("[ERROR] About 다이얼로그 표시 실패: " + e.getMessage());
-            UIFactory.showInfoDialog("❌ 오류", "정보 창을 표시할 수 없습니다.");
+            showInfoDialog("❌ 오류", "정보 창을 표시할 수 없습니다.");
         }
     }
 
@@ -412,7 +435,7 @@ public class MainController implements Initializable {
             HelpDialog.show(getCurrentStage());
         } catch (Exception e) {
             System.err.println("[ERROR] 도움말 창 표시 실패: " + e.getMessage());
-            UIFactory.showInfoDialog("❌ 오류", "도움말 창을 표시할 수 없습니다.");
+            showInfoDialog("❌ 오류", "도움말 창을 표시할 수 없습니다.");
         }
     }
 
@@ -451,11 +474,11 @@ public class MainController implements Initializable {
 
         } catch (IOException e) {
             System.err.println("[ERROR] 설정 창 로드 실패: " + e.getMessage());
-            UIFactory.showInfoDialog("❌ 오류",
+            showInfoDialog("❌ 오류",
                     "설정 창을 열 수 없습니다:\n" + e.getMessage());
         } catch (Exception e) {
             System.err.println("[ERROR] 설정 창에서 예기치 않은 오류: " + e.getMessage());
-            UIFactory.showInfoDialog("❌ 오류",
+            showInfoDialog("❌ 오류",
                     "설정 창에서 오류가 발생했습니다:\n" + e.getMessage());
         }
     }
@@ -552,10 +575,187 @@ public class MainController implements Initializable {
         });
     }
 
+    /**
+     * 실시간 모니터링 토글 버튼 핸들러
+     */
+    @FXML
+    private void handleMonitoringToggle() {
+        if (isMonitoringActive) {
+            stopMonitoring();
+        } else {
+            startMonitoring();
+        }
+    }
+
+    /**
+     * 실시간 모니터링 시작
+     */
+    private void startMonitoring() {
+        AppConfig config = configService.loadConfig();
+        String monitoringFolder = config.getDefaultScanFolder();
+
+        if (monitoringFolder == null || monitoringFolder.trim().isEmpty()) {
+            // 기본 다운로드 폴더 사용
+            monitoringFolder = System.getProperty("user.home") + File.separator + "Downloads";
+        }
+
+        // 폴더 선택 다이얼로그 (사용자가 원하는 경우)
+        if (!config.isAutoOrganizeEnabled()) {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("모니터링할 폴더 선택");
+            chooser.setInitialDirectory(new File(monitoringFolder));
+
+            File selectedFolder = chooser.showDialog(monitoringToggleButton.getScene().getWindow());
+            if (selectedFolder == null) {
+                return; // 사용자가 취소
+            }
+            monitoringFolder = selectedFolder.getAbsolutePath();
+        }
+
+        // 모니터링 시작
+        boolean started = fileWatcherService.startWatching(monitoringFolder);
+
+        if (started) {
+            isMonitoringActive = true;
+            updateMonitoringUI();
+
+            // 설정에 저장
+            config.setDefaultScanFolder(monitoringFolder);
+            config.setRealTimeMonitoring(true);
+            configService.saveConfig(config);
+
+            updateMonitoringStatus("실시간 모니터링 활성화됨");
+
+            showInfoDialog("모니터링 시작",
+                    "실시간 폴더 모니터링이 시작되었습니다.\n폴더: " + monitoringFolder);
+
+        } else {
+            showAlert("모니터링 시작 실패",
+                    "폴더 모니터링을 시작할 수 없습니다.\n폴더 경로를 확인해주세요.",
+                    Alert.AlertType.ERROR);
+        }
+    }
+
+    /**
+     * 실시간 모니터링 중지
+     */
+    private void stopMonitoring() {
+        fileWatcherService.stopWatching();
+        isMonitoringActive = false;
+        updateMonitoringUI();
+
+        // 설정 업데이트
+        AppConfig config = configService.loadConfig();
+        config.setRealTimeMonitoring(false);
+        configService.saveConfig(config);
+
+        updateMonitoringStatus("실시간 모니터링 중지됨");
+    }
+
+    /**
+     * 새 파일 감지 시 호출되는 콜백
+     */
+    private void handleNewFileDetected(FileInfo newFile) {
+        Platform.runLater(() -> {
+            // 테이블 업데이트 (이미 fileWatcherService에서 fileList에 추가함)
+            fileTable.refresh();
+
+            // 통계 업데이트
+            updateStatistics();
+
+            // 상태 메시지 업데이트
+            updateStatusLabel("새 파일 감지: " + newFile.getFileName());
+
+            // 자동 정리가 완료된 경우 성공 메시지
+            if (newFile.getStatus() == ProcessingStatus.ORGANIZED) {
+                showTemporaryMessage("파일 자동 정리: " + newFile.getFileName() + " → " +
+                        newFile.getDetectedCategory());
+            }
+        });
+    }
+
+    /**
+     * 모니터링 상태 업데이트
+     */
+    private void updateMonitoringStatus(String message) {
+        Platform.runLater(() -> {
+            if (monitoringStatusLabel != null) {
+                monitoringStatusLabel.setText(message);
+            }
+
+            // 상태바에도 표시
+            updateStatusLabel(message);
+        });
+    }
+
+    /**
+     * 모니터링 UI 상태 업데이트
+     */
+    private void updateMonitoringUI() {
+        Platform.runLater(() -> {
+            if (monitoringToggleButton != null) {
+                if (isMonitoringActive) {
+                    monitoringToggleButton.setText("🛑 모니터링 중지");
+                    monitoringToggleButton.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white;");
+                } else {
+                    monitoringToggleButton.setText("▶️ 모니터링 시작");
+                    monitoringToggleButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white;");
+                }
+            }
+
+            if (monitoringFolderLabel != null) {
+                String folder = fileWatcherService.getWatchedDirectory();
+                if (folder != null) {
+                    monitoringFolderLabel.setText("📁 " + folder);
+                } else {
+                    monitoringFolderLabel.setText("📁 모니터링 중인 폴더 없음");
+                }
+            }
+        });
+    }
+
+    /**
+     * 일시적 메시지 표시 (3초 후 사라짐)
+     */
+    private void showTemporaryMessage(String message) {
+        if (statusLabel != null) {
+            statusLabel.setText(message);
+            statusLabel.setStyle("-fx-text-fill: #28a745; -fx-font-weight: bold;");
+
+            // 3초 후 원래 상태로 복원
+            Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), e -> {
+                statusLabel.setStyle("-fx-text-fill: #333;");
+                updateStatistics(); // 통계로 다시 표시
+            }));
+            timeline.play();
+        }
+    }
+
+    /**
+     * 모니터링 설정 변경 핸들러 (설정 창에서 호출)
+     */
+    public void updateMonitoringConfig(AppConfig newConfig) {
+        if (fileWatcherService != null) {
+            fileWatcherService.updateConfig(newConfig);
+
+            // 모니터링 상태가 설정과 다르면 동기화
+            if (newConfig.isRealTimeMonitoring() && !isMonitoringActive) {
+                startMonitoring();
+            } else if (!newConfig.isRealTimeMonitoring() && isMonitoringActive) {
+                stopMonitoring();
+            }
+        }
+    }
+
     @FXML
     private void handleExit() {
-        System.out.println("[INFO] 애플리케이션 종료");
+        // 모니터링 서비스 종료
+        if (fileWatcherService != null) {
+            fileWatcherService.shutdown();
+        }
+
         Platform.exit();
+        System.exit(0);
     }
 
     // ===================
@@ -649,12 +849,12 @@ public class MainController implements Initializable {
                     targetRootPath
             );
 
-            UIFactory.showInfoDialog("🎉 정리 완료", resultMessage);
+            showInfoDialog("🎉 정리 완료", resultMessage);
         });
 
         organizeTask.setOnFailed(e -> {
             Throwable exception = organizeTask.getException();
-            UIFactory.showInfoDialog("❌ 정리 실패",
+            showInfoDialog("❌ 정리 실패",
                     "파일 정리 중 오류가 발생했습니다:\n" + exception.getMessage());
         });
 
@@ -735,12 +935,12 @@ public class MainController implements Initializable {
                     undoableFiles.size() - successCount
             );
 
-            UIFactory.showInfoDialog("🎉 되돌리기 완료", resultMessage);
+            showInfoDialog("🎉 되돌리기 완료", resultMessage);
         });
 
         undoTask.setOnFailed(e -> {
             Throwable exception = undoTask.getException();
-            UIFactory.showInfoDialog("❌ 되돌리기 실패",
+            showInfoDialog("❌ 되돌리기 실패",
                     "파일 되돌리기 중 오류가 발생했습니다:\n" + exception.getMessage());
         });
 
@@ -781,7 +981,7 @@ public class MainController implements Initializable {
                         statusLabel.setText("❌ 중복 파일 분석 실패");
 
                         Throwable exception = getException();
-                        UIFactory.showInfoDialog("❌ 분석 실패",
+                        showInfoDialog("❌ 분석 실패",
                                 "중복 파일 분석 중 오류가 발생했습니다:\n" + exception.getMessage());
                     }
                 };
@@ -796,7 +996,7 @@ public class MainController implements Initializable {
      */
     private void showDuplicateResults(List<com.smartfilemanager.model.DuplicateGroup> duplicateGroups) {
         if (duplicateGroups.isEmpty()) {
-            UIFactory.showInfoDialog("🎉 중복 파일 없음",
+            showInfoDialog("🎉 중복 파일 없음",
                     "🔍 분석 결과 중복된 파일을 찾지 못했습니다.\n\n" +
                             "✅ 모든 파일이 고유한 파일입니다!\n" +
                             "📊 분석된 파일: " + fileList.size() + "개");
@@ -828,7 +1028,7 @@ public class MainController implements Initializable {
         message.append("💾 절약 가능 용량: ").append(formatFileSize(totalSavings)).append("\n\n");
         message.append("🚀 향후 버전에서는 중복 파일 관리 UI가 제공될 예정입니다!");
 
-        UIFactory.showInfoDialog("🔄 중복 파일 발견!", message.toString());
+        showInfoDialog("🔄 중복 파일 발견!", message.toString());
     }
 
     /**
@@ -863,7 +1063,7 @@ public class MainController implements Initializable {
                         statusLabel.setText("❌ 불필요한 파일 분석 실패");
 
                         Throwable exception = getException();
-                        UIFactory.showInfoDialog("❌ 분석 실패",
+                        showInfoDialog("❌ 분석 실패",
                                 "불필요한 파일 분석 중 오류가 발생했습니다:\n" + exception.getMessage());
                     }
                 };
@@ -878,7 +1078,7 @@ public class MainController implements Initializable {
      */
     private void showCleanupResults(List<com.smartfilemanager.model.CleanupCandidate> candidates) {
         if (candidates.isEmpty()) {
-            UIFactory.showInfoDialog("🎉 불필요한 파일 없음",
+            showInfoDialog("🎉 불필요한 파일 없음",
                     "🧹 분석 결과 정리할 불필요한 파일을 찾지 못했습니다.\n\n" +
                             "✅ 시스템이 이미 깔끔한 상태입니다!\n" +
                             "📊 분석된 파일: " + fileList.size() + "개");
@@ -896,7 +1096,7 @@ public class MainController implements Initializable {
         message.append("💾 총 절약 가능 용량: ").append(formatFileSize(totalSize)).append("\n\n");
         message.append("🚀 향후 버전에서는 실제 파일 삭제 기능이 제공될 예정입니다!");
 
-        UIFactory.showInfoDialog("🧹 불필요한 파일 발견!", message.toString());
+        showInfoDialog("🧹 불필요한 파일 발견!", message.toString());
     }
 
     // =================
