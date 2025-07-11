@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<VBox xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.smartfilemanager.controller.RuleDialogController">
+    <children>
+        <!-- 제목 영역 -->
+        <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="dialog-header">
+            <children>
+                <Label fx:id="dialogTitleLabel" text="📝 파일 정리 규칙 추가" styleClass="dialog-title">
+                    <font>
+                        <Font name="System Bold" size="18.0" />
+                    </font>
+                </Label>
+            </children>
+            <padding>
+                <Insets bottom="15.0" left="20.0" right="20.0" top="20.0" />
+            </padding>
+        </HBox>
+
+        <Separator />
+
+        <!-- 입력 폼 영역 -->
+        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+            <content>
+                <VBox spacing="20.0">
+                    <padding>
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                    </padding>
+
+                    <!-- 규칙명 입력 -->
+                    <VBox spacing="8.0">
+                        <children>
+                            <Label text="📝 규칙명 *" styleClass="field-label">
+                                <font>
+                                    <Font name="System Bold" size="13.0" />
+                                </font>
+                            </Label>
+                            <TextField fx:id="ruleNameField" promptText="예: 이미지 파일, 업무 문서, 개발 소스코드" />
+                            <Label fx:id="ruleNameErrorLabel" text="" styleClass="error-label" visible="false" />
+                        </children>
+                    </VBox>
+
+                    <!-- 확장자 입력 -->
+                    <VBox spacing="8.0">
+                        <children>
+                            <Label text="📄 파일 확장자 *" styleClass="field-label">
+                                <font>
+                                    <Font name="System Bold" size="13.0" />
+                                </font>
+                            </Label>
+                            <TextField fx:id="extensionsField" promptText="예: jpg,jpeg,png,gif (쉼표로 구분)" />
+                            <Label text="💡 쉼표(,)로 구분하여 입력하세요. 점(.)은 제외하고 입력하세요." styleClass="help-label" />
+                            <Label fx:id="extensionsErrorLabel" text="" styleClass="error-label" visible="false" />
+                        </children>
+                    </VBox>
+
+                    <!-- 타겟 폴더 입력 -->
+                    <VBox spacing="8.0">
+                        <children>
+                            <Label text="📁 정리할 폴더 *" styleClass="field-label">
+                                <font>
+                                    <Font name="System Bold" size="13.0" />
+                                </font>
+                            </Label>
+                            <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                <children>
+                                    <TextField fx:id="targetFolderField" promptText="예: Documents, Images, Work/Reports" HBox.hgrow="ALWAYS" />
+                                    <Button fx:id="browseFolderButton" text="📁 찾아보기" onAction="#handleBrowseFolder" />
+                                </children>
+                            </HBox>
+                            <Label text="💡 정리 폴더 하위의 서브폴더명을 입력하세요." styleClass="help-label" />
+                            <Label fx:id="targetFolderErrorLabel" text="" styleClass="error-label" visible="false" />
+                        </children>
+                    </VBox>
+
+                    <!-- 우선순위 입력 -->
+                    <VBox spacing="8.0">
+                        <children>
+                            <Label text="🔢 우선순위" styleClass="field-label">
+                                <font>
+                                    <Font name="System Bold" size="13.0" />
+                                </font>
+                            </Label>
+                            <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                <children>
+                                    <Spinner fx:id="prioritySpinner" initialValue="50" min="1" max="100" editable="true" prefWidth="100.0" />
+                                    <Label text="(1=최고 우선순위, 100=최저 우선순위)" styleClass="help-label" />
+                                </children>
+                            </HBox>
+                            <Label text="💡 같은 확장자가 여러 규칙에 있을 때 우선순위가 높은 규칙이 적용됩니다." styleClass="help-label" />
+                        </children>
+                    </VBox>
+
+                    <!-- 설명 입력 -->
+                    <VBox spacing="8.0">
+                        <children>
+                            <Label text="📝 설명 (선택사항)" styleClass="field-label">
+                                <font>
+                                    <Font name="System Bold" size="13.0" />
+                                </font>
+                            </Label>
+                            <TextArea fx:id="descriptionArea" promptText="이 규칙에 대한 설명을 입력하세요..." prefRowCount="3" wrapText="true" />
+                        </children>
+                    </VBox>
+
+                    <!-- 활성화 체크박스 -->
+                    <VBox spacing="8.0">
+                        <children>
+                            <CheckBox fx:id="enabledCheckBox" text="✅ 규칙 활성화" selected="true">
+                                <font>
+                                    <Font name="System Bold" size="13.0" />
+                                </font>
+                            </CheckBox>
+                            <Label text="💡 비활성화된 규칙은 파일 정리 시 무시됩니다." styleClass="help-label" />
+                        </children>
+                    </VBox>
+
+                    <Separator />
+
+                    <!-- 미리보기 영역 -->
+                    <VBox spacing="10.0" styleClass="preview-section">
+                        <children>
+                            <Label text="🔍 규칙 미리보기" styleClass="section-title">
+                                <font>
+                                    <Font name="System Bold" size="14.0" />
+                                </font>
+                            </Label>
+
+                            <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                <children>
+                                    <Label text="테스트 파일명:" />
+                                    <TextField fx:id="previewTestFileField" promptText="예: document.pdf" prefWidth="200.0" onKeyReleased="#handlePreviewUpdate" />
+                                </children>
+                            </HBox>
+
+                            <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                <children>
+                                    <Label text="결과:" />
+                                    <Label fx:id="previewResultLabel" text="파일명을 입력하여 테스트해보세요" styleClass="preview-result" />
+                                </children>
+                            </HBox>
+                        </children>
+                        <padding>
+                            <Insets bottom="10.0" left="15.0" right="15.0" top="10.0" />
+                        </padding>
+                    </VBox>
+                </VBox>
+            </content>
+        </ScrollPane>
+
+        <Separator />
+
+        <!-- 버튼 영역 -->
+        <HBox alignment="CENTER_RIGHT" spacing="15.0" styleClass="dialog-buttons">
+            <children>
+                <Button fx:id="cancelButton" text="❌ 취소" onAction="#handleCancel" />
+                <Button fx:id="saveButton" text="✅ 저장" onAction="#handleSave" styleClass="primary-button" defaultButton="true" />
+            </children>
+            <padding>
+                <Insets bottom="20.0" left="20.0" right="20.0" top="15.0" />
+            </padding>
+        </HBox>
+    </children>
+</VBox>

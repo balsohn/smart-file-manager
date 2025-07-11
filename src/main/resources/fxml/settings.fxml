@@ -282,6 +282,128 @@
                     </ScrollPane>
                 </content>
             </Tab>
+
+            <!-- 정리 규칙 설정 탭 -->
+            <Tab text="📝 정리 규칙">
+                <content>
+                    <ScrollPane fitToWidth="true">
+                        <content>
+                            <VBox spacing="15.0">
+                                <padding>
+                                    <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                </padding>
+
+                                <!-- 커스텀 규칙 활성화 설정 -->
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="⚙️ 커스텀 규칙 설정" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <CheckBox fx:id="useCustomRulesCheckBox" text="사용자 정의 규칙 사용" />
+                                        
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="규칙 파일:" minWidth="80.0" />
+                                                <TextField fx:id="customRulesFilePathField" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="browseRulesFileButton" text="📁 찾아보기" onAction="#handleBrowseRulesFile" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <Separator />
+
+                                <!-- 규칙 관리 테이블 -->
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="📋 정리 규칙 관리" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <TableView fx:id="rulesTableView" prefHeight="300.0">
+                                            <columns>
+                                                <TableColumn fx:id="ruleEnabledColumn" text="✓" prefWidth="40.0" />
+                                                <TableColumn fx:id="ruleNameColumn" text="규칙명" prefWidth="120.0" />
+                                                <TableColumn fx:id="ruleExtensionsColumn" text="확장자" prefWidth="150.0" />
+                                                <TableColumn fx:id="ruleTargetFolderColumn" text="타겟 폴더" prefWidth="120.0" />
+                                                <TableColumn fx:id="rulePriorityColumn" text="우선순위" prefWidth="80.0" />
+                                            </columns>
+                                        </TableView>
+
+                                        <!-- 규칙 관리 버튼들 -->
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Button fx:id="addRuleButton" text="➕ 추가" onAction="#handleAddRule" />
+                                                <Button fx:id="editRuleButton" text="✏️ 수정" onAction="#handleEditRule" />
+                                                <Button fx:id="deleteRuleButton" text="🗑️ 삭제" onAction="#handleDeleteRule" />
+                                                <Separator orientation="VERTICAL" />
+                                                <Button fx:id="importRulesButton" text="📁 가져오기" onAction="#handleImportRules" />
+                                                <Button fx:id="exportRulesButton" text="💾 내보내기" onAction="#handleExportRules" />
+                                                <Separator orientation="VERTICAL" />
+                                                <Button fx:id="reloadRulesButton" text="🔄 새로고침" onAction="#handleReloadRules" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <Separator />
+
+                                <!-- 미리보기 기능 -->
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="🔍 규칙 미리보기" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="파일명:" minWidth="80.0" />
+                                                <TextField fx:id="previewFileNameField" HBox.hgrow="ALWAYS" promptText="예: document.pdf" onKeyReleased="#handlePreviewFileNameChanged" />
+                                            </children>
+                                        </HBox>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                            <children>
+                                                <Label text="결과:" minWidth="80.0" />
+                                                <Label fx:id="previewResultLabel" text="파일명을 입력하세요" styleClass="preview-result" HBox.hgrow="ALWAYS" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <Separator />
+
+                                <!-- 규칙 통계 -->
+                                <VBox spacing="10.0">
+                                    <children>
+                                        <Label text="📊 규칙 통계" styleClass="section-title">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Label>
+
+                                        <HBox alignment="CENTER_LEFT" spacing="20.0">
+                                            <children>
+                                                <Label fx:id="totalRulesLabel" text="전체 규칙: 0개" />
+                                                <Label fx:id="enabledRulesLabel" text="활성화: 0개" />
+                                                <Label fx:id="totalExtensionsLabel" text="지원 확장자: 0개" />
+                                                <Label fx:id="conflictingExtensionsLabel" text="충돌: 0개" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+                            </VBox>
+                        </content>
+                    </ScrollPane>
+                </content>
+            </Tab>
         </TabPane>
 
         <!-- 하단 버튼 영역 -->

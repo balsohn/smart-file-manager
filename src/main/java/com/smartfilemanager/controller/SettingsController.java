@@ -1,24 +1,38 @@
 package com.smartfilemanager.controller;
 
 import com.smartfilemanager.model.AppConfig;
+import com.smartfilemanager.model.FileRule;
 import com.smartfilemanager.service.ConfigService;
+import com.smartfilemanager.service.CustomRulesManager;
 import com.smartfilemanager.ui.ThemeManager;
 import com.smartfilemanager.ui.UIFactory;
 import com.smartfilemanager.util.AIAnalyzer;
+import com.smartfilemanager.util.FileTypeDetector;
 import com.smartfilemanager.util.StartupManager;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxTableCell;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
@@ -68,6 +82,33 @@ public class SettingsController implements Initializable {
     @FXML private CheckBox startWithWindowsCheckBox;
     @FXML private CheckBox debugModeCheckBox;
 
+    // 정리 규칙 설정 탭
+    @FXML private CheckBox useCustomRulesCheckBox;
+    @FXML private TextField customRulesFilePathField;
+    @FXML private Button browseRulesFileButton;
+    
+    @FXML private TableView<FileRule> rulesTableView;
+    @FXML private TableColumn<FileRule, Boolean> ruleEnabledColumn;
+    @FXML private TableColumn<FileRule, String> ruleNameColumn;
+    @FXML private TableColumn<FileRule, String> ruleExtensionsColumn;
+    @FXML private TableColumn<FileRule, String> ruleTargetFolderColumn;
+    @FXML private TableColumn<FileRule, Integer> rulePriorityColumn;
+    
+    @FXML private Button addRuleButton;
+    @FXML private Button editRuleButton;
+    @FXML private Button deleteRuleButton;
+    @FXML private Button importRulesButton;
+    @FXML private Button exportRulesButton;
+    @FXML private Button reloadRulesButton;
+    
+    @FXML private TextField previewFileNameField;
+    @FXML private Label previewResultLabel;
+    
+    @FXML private Label totalRulesLabel;
+    @FXML private Label enabledRulesLabel;
+    @FXML private Label totalExtensionsLabel;
+    @FXML private Label conflictingExtensionsLabel;
+
     // 버튼들
     @FXML private Button resetButton;
     @FXML private Button cancelButton;
@@ -81,6 +122,7 @@ public class SettingsController implements Initializable {
     private ConfigService configService;
     private AppConfig originalConfig;
     private Stage settingsStage;
+    private CustomRulesManager customRulesManager;
 
     // ===============================
     // 🚀 초기화 메서드들
@@ -99,6 +141,7 @@ public class SettingsController implements Initializable {
         setupComboBoxes();
         setupEventHandlers();
         setupAIEventHandlers();
+        setupRulesManagement();
 
         // 현재 설정 값으로 UI 초기화
         loadConfigToUI(originalConfig);
@@ -341,6 +384,9 @@ public class SettingsController implements Initializable {
 
         // Windows 시작프로그램 설정 로드
         loadStartupSettings(config);
+        
+        // 커스텀 규칙 설정 로드
+        loadCustomRulesSettings(config);
     }
 
     /**
@@ -387,6 +433,10 @@ public class SettingsController implements Initializable {
         } else {
             config.setStartWithWindows(false);
         }
+
+        // 커스텀 규칙 설정
+        config.setUseCustomRules(useCustomRulesCheckBox.isSelected());
+        config.setCustomRulesFilePath(customRulesFilePathField.getText().trim());
 
         return config;
     }
@@ -1050,6 +1100,361 @@ public class SettingsController implements Initializable {
      */
     public void setStage(Stage stage) {
         this.settingsStage = stage;
+    }
+
+    /**
+     * 커스텀 규칙 설정을 UI에 로드
+     */
+    private void loadCustomRulesSettings(AppConfig config) {
+        useCustomRulesCheckBox.setSelected(config.isUseCustomRules());
+        customRulesFilePathField.setText(config.getCustomRulesFilePath() != null ?
+                config.getCustomRulesFilePath() : "");
+        
+        // 커스텀 규칙 사용 여부에 따라 UI 상태 업데이트
+        boolean enabled = config.isUseCustomRules();
+        customRulesFilePathField.setDisable(!enabled);
+        browseRulesFileButton.setDisable(!enabled);
+        rulesTableView.setDisable(!enabled);
+        addRuleButton.setDisable(!enabled);
+        editRuleButton.setDisable(!enabled);
+        deleteRuleButton.setDisable(!enabled);
+        importRulesButton.setDisable(!enabled);
+        exportRulesButton.setDisable(!enabled);
+        reloadRulesButton.setDisable(!enabled);
+        previewFileNameField.setDisable(!enabled);
+        
+        // 커스텀 규칙 매니저 경로 업데이트
+        if (enabled && config.getCustomRulesFilePath() != null && !config.getCustomRulesFilePath().trim().isEmpty()) {
+            try {
+                customRulesManager.setRulesFilePath(config.getCustomRulesFilePath());
+                loadRulesToTable();
+                updateRulesStatistics();
+            } catch (Exception e) {
+                System.err.println("[ERROR] 커스텀 규칙 파일 로드 실패: " + e.getMessage());
+            }
+        }
+    }
+
+    // ===============================
+    // 📝 규칙 관리 메서드들
+    // ===============================
+
+    /**
+     * 규칙 관리 UI 설정
+     */
+    private void setupRulesManagement() {
+        // 커스텀 규칙 매니저 초기화
+        initializeCustomRulesManager();
+        
+        // 테이블 컬럼 설정
+        setupRulesTableColumns();
+        
+        // 이벤트 핸들러 설정
+        setupRulesEventHandlers();
+        
+        // 초기 데이터 로드
+        loadRulesToTable();
+        updateRulesStatistics();
+    }
+
+    /**
+     * 커스텀 규칙 매니저 초기화
+     */
+    private void initializeCustomRulesManager() {
+        try {
+            customRulesManager = new CustomRulesManager();
+            System.out.println("[INFO] 커스텀 규칙 매니저 초기화 완료");
+        } catch (Exception e) {
+            System.err.println("[ERROR] 커스텀 규칙 매니저 초기화 실패: " + e.getMessage());
+            showAlert("오류", "규칙 관리 시스템 초기화에 실패했습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    /**
+     * 규칙 테이블 컬럼 설정
+     */
+    private void setupRulesTableColumns() {
+        // 활성화 컬럼 (체크박스)
+        ruleEnabledColumn.setCellValueFactory(new PropertyValueFactory<>("enabled"));
+        ruleEnabledColumn.setCellFactory(CheckBoxTableCell.forTableColumn(ruleEnabledColumn));
+        ruleEnabledColumn.setEditable(true);
+        
+        // 규칙명 컬럼
+        ruleNameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+        
+        // 확장자 컬럼 (리스트를 문자열로 변환)
+        ruleExtensionsColumn.setCellValueFactory(cellData -> {
+            List<String> extensions = cellData.getValue().getExtensions();
+            String extensionsStr = extensions != null ? String.join(", ", extensions) : "";
+            return new javafx.beans.property.SimpleStringProperty(extensionsStr);
+        });
+        
+        // 타겟 폴더 컬럼
+        ruleTargetFolderColumn.setCellValueFactory(new PropertyValueFactory<>("targetFolder"));
+        
+        // 우선순위 컬럼
+        rulePriorityColumn.setCellValueFactory(new PropertyValueFactory<>("priority"));
+        
+        // 테이블 편집 가능하게 설정
+        rulesTableView.setEditable(true);
+    }
+
+    /**
+     * 규칙 관리 이벤트 핸들러 설정
+     */
+    private void setupRulesEventHandlers() {
+        // 커스텀 규칙 사용 체크박스
+        useCustomRulesCheckBox.setOnAction(e -> {
+            boolean enabled = useCustomRulesCheckBox.isSelected();
+            customRulesFilePathField.setDisable(!enabled);
+            browseRulesFileButton.setDisable(!enabled);
+            rulesTableView.setDisable(!enabled);
+            addRuleButton.setDisable(!enabled);
+            editRuleButton.setDisable(!enabled);
+            deleteRuleButton.setDisable(!enabled);
+            importRulesButton.setDisable(!enabled);
+            exportRulesButton.setDisable(!enabled);
+            reloadRulesButton.setDisable(!enabled);
+            previewFileNameField.setDisable(!enabled);
+        });
+
+        // 테이블 선택 변경 시 버튼 상태 업데이트
+        rulesTableView.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+            boolean hasSelection = newSelection != null;
+            editRuleButton.setDisable(!hasSelection);
+            deleteRuleButton.setDisable(!hasSelection);
+        });
+    }
+
+    /**
+     * 규칙 테이블에 데이터 로드
+     */
+    private void loadRulesToTable() {
+        if (customRulesManager != null) {
+            rulesTableView.getItems().setAll(customRulesManager.getAllRules());
+        }
+    }
+
+    /**
+     * 규칙 통계 업데이트
+     */
+    private void updateRulesStatistics() {
+        if (customRulesManager != null) {
+            Map<String, Object> stats = customRulesManager.getRulesStatistics();
+            totalRulesLabel.setText("전체 규칙: " + stats.get("totalRules") + "개");
+            enabledRulesLabel.setText("활성화: " + stats.get("enabledRules") + "개");
+            totalExtensionsLabel.setText("지원 확장자: " + stats.get("totalExtensions") + "개");
+            conflictingExtensionsLabel.setText("충돌: " + stats.get("conflictingExtensions") + "개");
+        }
+    }
+
+    // ===============================
+    // 📝 규칙 관리 이벤트 핸들러들
+    // ===============================
+
+    @FXML
+    private void handleBrowseRulesFile() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("규칙 파일 선택");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("JSON 파일", "*.json")
+        );
+        
+        File selectedFile = fileChooser.showOpenDialog(settingsStage);
+        if (selectedFile != null) {
+            customRulesFilePathField.setText(selectedFile.getAbsolutePath());
+        }
+    }
+
+    @FXML
+    private void handleAddRule() {
+        try {
+            FileRule newRule = showRuleDialog(null);
+            if (newRule != null) {
+                customRulesManager.addRule(newRule);
+                loadRulesToTable();
+                updateRulesStatistics();
+                showAlert("성공", "새 규칙이 추가되었습니다.", Alert.AlertType.INFORMATION);
+            }
+        } catch (Exception e) {
+            showAlert("오류", "규칙 추가 중 오류가 발생했습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    @FXML
+    private void handleEditRule() {
+        FileRule selectedRule = rulesTableView.getSelectionModel().getSelectedItem();
+        if (selectedRule == null) {
+            showAlert("선택 오류", "수정할 규칙을 선택해주세요.", Alert.AlertType.WARNING);
+            return;
+        }
+        
+        try {
+            FileRule editedRule = showRuleDialog(selectedRule);
+            if (editedRule != null) {
+                customRulesManager.updateRule(editedRule);
+                loadRulesToTable();
+                updateRulesStatistics();
+                showAlert("성공", "규칙이 수정되었습니다.", Alert.AlertType.INFORMATION);
+            }
+        } catch (Exception e) {
+            showAlert("오류", "규칙 수정 중 오류가 발생했습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    @FXML
+    private void handleDeleteRule() {
+        FileRule selectedRule = rulesTableView.getSelectionModel().getSelectedItem();
+        if (selectedRule == null) {
+            showAlert("선택 오류", "삭제할 규칙을 선택해주세요.", Alert.AlertType.WARNING);
+            return;
+        }
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("규칙 삭제 확인");
+        confirmAlert.setHeaderText("규칙을 삭제하시겠습니까?");
+        confirmAlert.setContentText("규칙명: " + selectedRule.getName());
+
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                customRulesManager.deleteRule(selectedRule.getId());
+                loadRulesToTable();
+                updateRulesStatistics();
+                showAlert("성공", "규칙이 삭제되었습니다.", Alert.AlertType.INFORMATION);
+            } catch (Exception e) {
+                showAlert("오류", "규칙 삭제 중 오류가 발생했습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+            }
+        }
+    }
+
+    @FXML
+    private void handleImportRules() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("규칙 파일 가져오기");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("JSON 파일", "*.json")
+        );
+        
+        File selectedFile = fileChooser.showOpenDialog(settingsStage);
+        if (selectedFile != null) {
+            try {
+                customRulesManager.importRules(selectedFile.getAbsolutePath());
+                loadRulesToTable();
+                updateRulesStatistics();
+                showAlert("성공", "규칙을 가져왔습니다.", Alert.AlertType.INFORMATION);
+            } catch (Exception e) {
+                showAlert("오류", "규칙 가져오기 중 오류가 발생했습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+            }
+        }
+    }
+
+    @FXML
+    private void handleExportRules() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("규칙 파일 내보내기");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("JSON 파일", "*.json")
+        );
+        fileChooser.setInitialFileName("custom-rules-export.json");
+        
+        File selectedFile = fileChooser.showSaveDialog(settingsStage);
+        if (selectedFile != null) {
+            try {
+                customRulesManager.exportRules(selectedFile.getAbsolutePath());
+                showAlert("성공", "규칙을 내보냈습니다.", Alert.AlertType.INFORMATION);
+            } catch (Exception e) {
+                showAlert("오류", "규칙 내보내기 중 오류가 발생했습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+            }
+        }
+    }
+
+    @FXML
+    private void handleReloadRules() {
+        try {
+            customRulesManager.loadRules();
+            loadRulesToTable();
+            updateRulesStatistics();
+            showAlert("성공", "규칙을 새로고침했습니다.", Alert.AlertType.INFORMATION);
+        } catch (Exception e) {
+            showAlert("오류", "규칙 새로고침 중 오류가 발생했습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    @FXML
+    private void handlePreviewFileNameChanged(KeyEvent event) {
+        String fileName = previewFileNameField.getText();
+        if (fileName != null && !fileName.trim().isEmpty()) {
+            if (customRulesManager != null && useCustomRulesCheckBox.isSelected()) {
+                String category = customRulesManager.determineCategory(fileName);
+                previewResultLabel.setText(category + " 폴더로 이동됩니다");
+                
+                // 카테고리에 따라 스타일 변경
+                if ("Others".equals(category)) {
+                    previewResultLabel.setStyle("-fx-text-fill: #ff6b6b;");
+                } else {
+                    previewResultLabel.setStyle("-fx-text-fill: #51cf66;");
+                }
+            } else {
+                previewResultLabel.setText("커스텀 규칙이 비활성화되었습니다");
+                previewResultLabel.setStyle("-fx-text-fill: #868e96;");
+            }
+        } else {
+            previewResultLabel.setText("파일명을 입력하세요");
+            previewResultLabel.setStyle("-fx-text-fill: #868e96;");
+        }
+    }
+
+    /**
+     * 규칙 다이얼로그 표시
+     */
+    private FileRule showRuleDialog(FileRule editingRule) {
+        try {
+            // FXML 로드
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/rule-dialog.fxml"));
+            Parent root = loader.load();
+            
+            // 컨트롤러 설정
+            RuleDialogController dialogController = loader.getController();
+            
+            // 다이얼로그 스테이지 생성
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle(editingRule == null ? "새 규칙 추가" : "규칙 수정");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(settingsStage);
+            dialogStage.setResizable(false);
+            
+            // 씬 설정
+            Scene scene = new Scene(root);
+            scene.getStylesheets().add("/css/styles.css");
+            dialogStage.setScene(scene);
+            
+            // 컨트롤러 초기화
+            dialogController.setDialogStage(dialogStage);
+            dialogController.setRulesManager(customRulesManager);
+            
+            if (editingRule == null) {
+                dialogController.setAddMode();
+            } else {
+                dialogController.setEditMode(editingRule);
+            }
+            
+            // 다이얼로그 표시
+            dialogStage.showAndWait();
+            
+            // 결과 반환
+            if (dialogController.isSaveClicked()) {
+                return dialogController.getRule();
+            } else {
+                return null;
+            }
+            
+        } catch (Exception e) {
+            System.err.println("[ERROR] 규칙 다이얼로그 로드 실패: " + e.getMessage());
+            e.printStackTrace();
+            showAlert("오류", "다이얼로그를 열 수 없습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+            return null;
+        }
     }
 
     /**
