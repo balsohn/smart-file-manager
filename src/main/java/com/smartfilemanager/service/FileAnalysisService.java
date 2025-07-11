@@ -4,6 +4,7 @@ import com.smartfilemanager.model.AppConfig;
 import com.smartfilemanager.model.FileInfo;
 import com.smartfilemanager.model.ProcessingStatus;
 import com.smartfilemanager.util.AIAnalyzer;
+import com.smartfilemanager.util.FileTypeDetector;
 
 import java.io.File;
 import java.io.IOException;
@@ -381,9 +382,19 @@ public class FileAnalysisService {
     }
 
     /**
-     * 기본 카테고리 분류
+     * 기본 카테고리 분류 (커스텀 규칙 우선 적용)
      */
     private void classifyBasicCategory(FileInfo fileInfo) {
+        // 1. 커스텀 규칙 사용 시 우선 적용
+        if (FileTypeDetector.isCustomRulesEnabled()) {
+            String customCategory = FileTypeDetector.detectCategoryWithCustomRules(fileInfo.getFilePath());
+            if (customCategory != null && !customCategory.equals("Others")) {
+                fileInfo.setDetectedCategory(customCategory);
+                return;
+            }
+        }
+        
+        // 2. 기본 확장자 기반 분류 (폴백)
         String extension = fileInfo.getFileExtension().toLowerCase();
 
         // 문서 파일

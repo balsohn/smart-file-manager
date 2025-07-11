@@ -56,6 +56,12 @@ public class AppConfig {
      */
     private String aiModel;                    // AI 모델명 (gpt-3.5-turbo, gpt-4 등)
 
+    /**
+     * 커스텀 규칙 설정
+     */
+    private boolean useCustomRules;            // 커스텀 규칙 사용 여부
+    private String customRulesFilePath;        // 커스텀 규칙 파일 경로
+
 
 
 
@@ -106,6 +112,10 @@ public class AppConfig {
                 .aiApiKey(null)                      // API 키 없음
                 .aiModel("gpt-3.5-turbo")           // 기본 AI 모델
 
+                // 커스텀 규칙
+                .useCustomRules(true)                // 커스텀 규칙 기본 활성화
+                .customRulesFilePath(userHome + "\\.smartfilemanager\\custom-rules.json")  // 기본 규칙 파일 경로
+
                 .build();
     }
 
@@ -149,6 +159,7 @@ public class AppConfig {
         summary.append("📅 날짜별 정리: ").append(organizeByDate ? "활성화" : "비활성화").append("\n");
         summary.append("🔍 중복 탐지: ").append(enableDuplicateDetection ? "활성화" : "비활성화").append("\n");
         summary.append("📏 최대 분석 크기: ").append(maxFileSizeForAnalysis).append("MB\n");
+        summary.append("📝 커스텀 규칙: ").append(useCustomRules ? "사용" : "미사용").append("\n");
 
         return summary.toString();
     }

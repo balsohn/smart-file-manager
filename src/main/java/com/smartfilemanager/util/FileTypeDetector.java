@@ -1,5 +1,7 @@
 package com.smartfilemanager.util;
 
+import com.smartfilemanager.service.CustomRulesManager;
+
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,6 +16,9 @@ public class FileTypeDetector {
 
     // 파일 시그니처 (매직 넘버) 매핑
     private static final Map<String, FileTypeInfo> FILE_SIGNATURES = new HashMap<>();
+    
+    // 커스텀 규칙 매니저 (정적 인스턴스)
+    private static CustomRulesManager customRulesManager;
 
     static {
         // 이미지 파일들
@@ -285,11 +290,30 @@ public class FileTypeDetector {
     }
 
     /**
-     * 파일 카테고리 감지
+     * 파일 카테고리 감지 (커스텀 규칙 우선 적용)
      */
     public static String detectFileCategory(String filePath) {
+        // 1. 커스텀 규칙 먼저 확인
+        String customCategory = detectCategoryWithCustomRules(filePath);
+        if (customCategory != null && !customCategory.equals("Others")) {
+            return customCategory;
+        }
+        
+        // 2. 기본 헤더/확장자 기반 감지
         FileTypeInfo typeInfo = detectFileType(filePath);
         return typeInfo != null ? typeInfo.getCategory() : "Others";
+    }
+    
+    /**
+     * 커스텀 규칙을 사용한 카테고리 감지
+     */
+    public static String detectCategoryWithCustomRules(String filePath) {
+        if (customRulesManager == null) {
+            return "Others";
+        }
+        
+        String fileName = Paths.get(filePath).getFileName().toString();
+        return customRulesManager.determineCategory(fileName);
     }
 
     /**
@@ -357,5 +381,59 @@ public class FileTypeDetector {
         }
 
         return info;
+    }
+    
+    /**
+     * 커스텀 규칙 매니저 초기화
+     */
+    public static void initializeCustomRules(String rulesFilePath) {
+        try {
+            if (rulesFilePath != null && !rulesFilePath.trim().isEmpty()) {
+                customRulesManager = new CustomRulesManager(rulesFilePath);
+            } else {
+                customRulesManager = new CustomRulesManager();
+            }
+            System.out.println("[FileTypeDetector] 커스텀 규칙 초기화 완료: " + customRulesManager.getRulesFilePath());
+        } catch (Exception e) {
+            System.err.println("[ERROR] 커스텀 규칙 초기화 실패: " + e.getMessage());
+            customRulesManager = null;
+        }
+    }
+    
+    /**
+     * 커스텀 규칙 매니저 조회
+     */
+    public static CustomRulesManager getCustomRulesManager() {
+        return customRulesManager;
+    }
+    
+    /**
+     * 커스텀 규칙 사용 여부 확인
+     */
+    public static boolean isCustomRulesEnabled() {
+        return customRulesManager != null;
+    }
+    
+    /**
+     * 커스텀 규칙 매니저 재로드
+     */
+    public static void reloadCustomRules() {
+        if (customRulesManager != null) {
+            customRulesManager.loadRules();
+            System.out.println("[FileTypeDetector] 커스텀 규칙 재로드 완료");
+        }
+    }
+    
+    /**
+     * 커스텀 규칙을 고려한 파일 카테고리 감지 (설정 기반)
+     */
+    public static String detectFileCategoryWithConfig(String filePath, boolean useCustomRules) {
+        if (useCustomRules && customRulesManager != null) {
+            return detectFileCategory(filePath);  // 커스텀 규칙 우선 적용
+        } else {
+            // 기본 헤더/확장자 기반 감지만 사용
+            FileTypeInfo typeInfo = detectFileType(filePath);
+            return typeInfo != null ? typeInfo.getCategory() : "Others";
+        }
     }
 }
