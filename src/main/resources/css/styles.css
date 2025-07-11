@@ -701,3 +701,56 @@
 .bg-danger {
     -fx-background-color: #dc3545;
 }
+
+/* ===============================
+   다이얼로그 스타일
+   =============================== */
+
+.dialog-header {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 0 0 1 0;
+}
+
+.dialog-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #495057;
+}
+
+.dialog-buttons {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1 0 0 0;
+}
+
+.field-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #495057;
+    -fx-font-size: 13px;
+}
+
+.help-label {
+    -fx-text-fill: #6c757d;
+    -fx-font-size: 11px;
+    -fx-font-style: italic;
+}
+
+.error-label {
+    -fx-text-fill: #dc3545;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.preview-section {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+}
+
+.preview-result {
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
