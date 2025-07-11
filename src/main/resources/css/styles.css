@@ -1,12 +1,13 @@
 /* =========================
    Smart File Manager Styles
-   Enhanced Version
+   JavaFX Compatible Version
    ========================= */
 
 /* 전체 애플리케이션 기본 스타일 */
 .root {
-    -fx-font-family: "맑은 고딕", "Malgun Gothic", "Segoe UI", "굴림", "Gulim", sans-serif;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
     -fx-background-color: #ffffff;
+    -fx-font-smoothing-type: lcd;
 }
 
 /* ===============================
@@ -17,21 +18,49 @@
     -fx-font-size: 28px;
     -fx-font-weight: bold;
     -fx-text-fill: #2c3e50;
-    -fx-font-family: "맑은 고딕", "Malgun Gothic", "Segoe UI", sans-serif;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 2, 0, 0, 1);
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-effect: dropshadow(gaussian, #cccccc, 2, 0, 0, 1);
+}
+
+.main-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-effect: dropshadow(gaussian, #cccccc, 3, 0, 0, 1);
 }
 
 .subtitle-label {
     -fx-font-size: 16px;
     -fx-text-fill: #7f8c8d;
-    -fx-font-family: "맑은 고딕", "Malgun Gothic", "Segoe UI", sans-serif;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+}
+
+.subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: #7f8c8d;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-style: italic;
+}
+
+.status-indicator {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #6c757d;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-background-color: #f8f9fa;
+    -fx-background-radius: 12px;
+    -fx-padding: 4px 8px;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
 }
 
 .section-title {
     -fx-font-size: 16px;
     -fx-font-weight: bold;
     -fx-text-fill: #495057;
-    -fx-font-family: "맑은 고딕", "Malgun Gothic", "Segoe UI", sans-serif;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
 }
 
 .stats-label {
@@ -50,41 +79,47 @@
    =============================== */
 
 .scan-button {
-    -fx-background-color: #007bff;
+    -fx-background-color: linear-gradient(to bottom, #0ea5e9, #0284c7);
     -fx-text-fill: white;
-    -fx-background-radius: 6px;
-    -fx-border-radius: 6px;
-    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.3), 4, 0, 0, 2);
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
     -fx-cursor: hand;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-effect: dropshadow(gaussian, #0ea5e9, 4, 0.4, 0, 2);
 }
 
 .scan-button:hover {
-    -fx-background-color: #0056b3;
-    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.5), 6, 0, 0, 3);
+    -fx-background-color: linear-gradient(to bottom, #0284c7, #0369a1);
+    -fx-effect: dropshadow(gaussian, #0ea5e9, 6, 0.6, 0, 3);
 }
 
 .scan-button:pressed {
-    -fx-background-color: #004085;
-    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.2), 2, 0, 0, 1);
+    -fx-background-color: linear-gradient(to bottom, #0369a1, #075985);
+    -fx-effect: dropshadow(gaussian, #0ea5e9, 2, 0.2, 0, 1);
 }
 
 .organize-button {
-    -fx-background-color: #28a745;
+    -fx-background-color: linear-gradient(to bottom, #22c55e, #16a34a);
     -fx-text-fill: white;
-    -fx-background-radius: 6px;
-    -fx-border-radius: 6px;
-    -fx-effect: dropshadow(gaussian, rgba(40,167,69,0.3), 4, 0, 0, 2);
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
     -fx-cursor: hand;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-effect: dropshadow(gaussian, #22c55e, 4, 0.4, 0, 2);
 }
 
 .organize-button:hover {
-    -fx-background-color: #1e7e34;
-    -fx-effect: dropshadow(gaussian, rgba(40,167,69,0.5), 6, 0, 0, 3);
+    -fx-background-color: linear-gradient(to bottom, #16a34a, #15803d);
+    -fx-effect: dropshadow(gaussian, #22c55e, 6, 0.6, 0, 3);
 }
 
 .organize-button:pressed {
-    -fx-background-color: #155724;
-    -fx-effect: dropshadow(gaussian, rgba(40,167,69,0.2), 2, 0, 0, 1);
+    -fx-background-color: linear-gradient(to bottom, #15803d, #166534);
+    -fx-effect: dropshadow(gaussian, #22c55e, 2, 0.2, 0, 1);
 }
 
 .organize-button:disabled {
@@ -95,22 +130,93 @@
 }
 
 .settings-button {
-    -fx-background-color: #6c757d;
+    -fx-background-color: linear-gradient(to bottom, #6c757d, #545b62);
     -fx-text-fill: white;
-    -fx-background-radius: 6px;
-    -fx-border-radius: 6px;
-    -fx-effect: dropshadow(gaussian, rgba(108,117,125,0.3), 4, 0, 0, 2);
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
     -fx-cursor: hand;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-effect: dropshadow(gaussian, #6c757d, 4, 0.4, 0, 2);
 }
 
 .settings-button:hover {
-    -fx-background-color: #545b62;
-    -fx-effect: dropshadow(gaussian, rgba(108,117,125,0.5), 6, 0, 0, 3);
+    -fx-background-color: linear-gradient(to bottom, #545b62, #383d41);
+    -fx-effect: dropshadow(gaussian, #6c757d, 6, 0.6, 0, 3);
 }
 
 .settings-button:pressed {
-    -fx-background-color: #383d41;
-    -fx-effect: dropshadow(gaussian, rgba(108,117,125,0.2), 2, 0, 0, 1);
+    -fx-background-color: linear-gradient(to bottom, #383d41, #2d3236);
+    -fx-effect: dropshadow(gaussian, #6c757d, 2, 0.2, 0, 1);
+}
+
+.ai-button {
+    -fx-background-color: linear-gradient(to bottom, #e83e8c, #c91c7e);
+    -fx-text-fill: white;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-cursor: hand;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-effect: dropshadow(gaussian, #e83e8c, 4, 0.4, 0, 2);
+}
+
+.ai-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #c91c7e, #a91669);
+    -fx-effect: dropshadow(gaussian, #e83e8c, 6, 0.6, 0, 3);
+}
+
+.ai-button:pressed {
+    -fx-background-color: linear-gradient(to bottom, #a91669, #8b1355);
+    -fx-effect: dropshadow(gaussian, #e83e8c, 2, 0.2, 0, 1);
+}
+
+.monitoring-button {
+    -fx-background-color: linear-gradient(to bottom, #fd7e14, #e8590c);
+    -fx-text-fill: white;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-cursor: hand;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-effect: dropshadow(gaussian, #fd7e14, 4, 0.4, 0, 2);
+}
+
+.monitoring-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #e8590c, #d04a06);
+    -fx-effect: dropshadow(gaussian, #fd7e14, 6, 0.6, 0, 3);
+}
+
+.monitoring-button:pressed {
+    -fx-background-color: linear-gradient(to bottom, #d04a06, #b8420a);
+    -fx-effect: dropshadow(gaussian, #fd7e14, 2, 0.2, 0, 1);
+}
+
+/* 버튼 활성 상태 */
+.button.active {
+    -fx-background-color: #17a2b8;
+    -fx-border-color: #17a2b8;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, #17a2b8, 4, 0.4, 0, 2);
+}
+
+.button.active:hover {
+    -fx-background-color: #138496;
+    -fx-border-color: #138496;
+    -fx-effect: dropshadow(gaussian, #17a2b8, 6, 0.6, 0, 3);
+}
+
+.monitoring-button.active {
+    -fx-background-color: linear-gradient(to bottom, #17a2b8, #138496);
+    -fx-effect: dropshadow(gaussian, #17a2b8, 6, 0.6, 0, 3);
+}
+
+.ai-button.active {
+    -fx-background-color: linear-gradient(to bottom, #17a2b8, #138496);
+    -fx-effect: dropshadow(gaussian, #17a2b8, 6, 0.6, 0, 3);
 }
 
 /* ===============================
@@ -121,28 +227,49 @@
     -fx-text-fill: #28a745;
     -fx-font-weight: bold;
     -fx-font-size: 14px;
-    -fx-font-family: "맑은 고딕", "Malgun Gothic", "Segoe UI", sans-serif;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
 }
 
 .status-processing {
     -fx-text-fill: #007bff;
     -fx-font-weight: bold;
     -fx-font-size: 14px;
-    -fx-font-family: "맑은 고딕", "Malgun Gothic", "Segoe UI", sans-serif;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
 }
 
 .status-warning {
     -fx-text-fill: #ffc107;
     -fx-font-weight: bold;
     -fx-font-size: 14px;
-    -fx-font-family: "맑은 고딕", "Malgun Gothic", "Segoe UI", sans-serif;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
 }
 
 .status-error {
     -fx-text-fill: #dc3545;
     -fx-font-weight: bold;
     -fx-font-size: 14px;
-    -fx-font-family: "맑은 고딕", "Malgun Gothic", "Segoe UI", sans-serif;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+}
+
+.status-active {
+    -fx-text-fill: #17a2b8;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+}
+
+.status-inactive {
+    -fx-text-fill: #6c757d;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+}
+
+.status-success {
+    -fx-text-fill: #28a745;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
 }
 
 .progress-label {
@@ -216,7 +343,7 @@
 .detail-content {
     -fx-text-fill: #6c757d;
     -fx-font-size: 11px;
-    -fx-font-family: "Consolas", "Monaco", "Liberation Mono", "Courier New", monospace;
+    -fx-font-family: "Consolas", "Monaco", "Courier New", monospace;
     -fx-wrap-text: true;
 }
 
@@ -276,55 +403,6 @@
 }
 
 /* ===============================
-   설정 화면 스타일
-   =============================== */
-
-.settings-title {
-    -fx-font-size: 20px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #2c3e50;
-}
-
-.tab-pane {
-    -fx-background-color: #ffffff;
-}
-
-.tab-pane .tab-header-area {
-    -fx-background-color: #f8f9fa;
-    -fx-border-color: #dee2e6;
-    -fx-border-width: 0 0 1px 0;
-}
-
-.tab-pane .tab {
-    -fx-background-color: #f8f9fa;
-    -fx-border-color: #dee2e6;
-    -fx-border-width: 1px;
-    -fx-border-radius: 6px 6px 0 0;
-    -fx-background-radius: 6px 6px 0 0;
-    -fx-padding: 8px 16px;
-}
-
-.tab-pane .tab:selected {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #007bff;
-    -fx-border-width: 0 0 2px 0;
-}
-
-.tab-pane .tab:hover {
-    -fx-background-color: #e9ecef;
-}
-
-.tab-pane .tab-label {
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #495057;
-}
-
-.tab-pane .tab:selected .tab-label {
-    -fx-text-fill: #007bff;
-}
-
-/* ===============================
    폼 컨트롤 스타일
    =============================== */
 
@@ -340,7 +418,18 @@
 
 .text-field:focused {
     -fx-border-color: #007bff;
-    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.25), 4, 0, 0, 0);
+    -fx-effect: dropshadow(gaussian, #007bff, 4, 0.25, 0, 0);
+}
+
+.text-field-error {
+    -fx-border-color: #dc3545;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, #dc3545, 4, 0.25, 0, 0);
+}
+
+.text-field-error:focused {
+    -fx-border-color: #dc3545;
+    -fx-effect: dropshadow(gaussian, #dc3545, 4, 0.4, 0, 0);
 }
 
 .combo-box {
@@ -353,7 +442,18 @@
 
 .combo-box:focused {
     -fx-border-color: #007bff;
-    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.25), 4, 0, 0, 0);
+    -fx-effect: dropshadow(gaussian, #007bff, 4, 0.25, 0, 0);
+}
+
+.combo-box-error {
+    -fx-border-color: #dc3545;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, #dc3545, 4, 0.25, 0, 0);
+}
+
+.combo-box-error:focused {
+    -fx-border-color: #dc3545;
+    -fx-effect: dropshadow(gaussian, #dc3545, 4, 0.4, 0, 0);
 }
 
 .check-box {
@@ -378,36 +478,8 @@
     -fx-border-color: #007bff;
 }
 
-.spinner {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #ced4da;
-    -fx-border-width: 1px;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
-}
-
-.spinner:focused {
-    -fx-border-color: #007bff;
-    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.25), 4, 0, 0, 0);
-}
-
-.password-field {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #ced4da;
-    -fx-border-width: 1px;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
-    -fx-padding: 6px 12px;
-    -fx-font-size: 13px;
-}
-
-.password-field:focused {
-    -fx-border-color: #007bff;
-    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.25), 4, 0, 0, 0);
-}
-
 /* ===============================
-   다이얼로그 및 알림 스타일
+   다이얼로그 스타일
    =============================== */
 
 .dialog-pane {
@@ -416,7 +488,7 @@
     -fx-border-width: 1px;
     -fx-border-radius: 8px;
     -fx-background-radius: 8px;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);
+    -fx-effect: dropshadow(gaussian, #cccccc, 10, 0.1, 0, 5);
 }
 
 .dialog-pane .header-panel {
@@ -427,192 +499,6 @@
 
 .dialog-pane .content {
     -fx-padding: 20px;
-}
-
-.alert .content {
-    -fx-font-size: 13px;
-    -fx-text-fill: #495057;
-    -fx-wrap-text: true;
-}
-
-/* ===============================
-   상태별 색상 테마
-   =============================== */
-
-/* 성공 테마 */
-.success {
-    -fx-background-color: #d4edda;
-    -fx-text-fill: #155724;
-    -fx-border-color: #c3e6cb;
-}
-
-/* 경고 테마 */
-.warning {
-    -fx-background-color: #fff3cd;
-    -fx-text-fill: #856404;
-    -fx-border-color: #ffeaa7;
-}
-
-/* 오류 테마 */
-.error {
-    -fx-background-color: #f8d7da;
-    -fx-text-fill: #721c24;
-    -fx-border-color: #f5c6cb;
-}
-
-/* 정보 테마 */
-.info {
-    -fx-background-color: #d1ecf1;
-    -fx-text-fill: #0c5460;
-    -fx-border-color: #bee5eb;
-}
-
-/* ===============================
-   스크롤바 스타일
-   =============================== */
-
-.scroll-bar {
-    -fx-background-color: #f8f9fa;
-}
-
-.scroll-bar .track {
-    -fx-background-color: #f8f9fa;
-    -fx-border-color: transparent;
-    -fx-background-radius: 0;
-    -fx-border-radius: 0;
-}
-
-.scroll-bar .thumb {
-    -fx-background-color: #ced4da;
-    -fx-background-radius: 5px;
-    -fx-border-radius: 5px;
-}
-
-.scroll-bar .thumb:hover {
-    -fx-background-color: #adb5bd;
-}
-
-.scroll-bar .thumb:pressed {
-    -fx-background-color: #6c757d;
-}
-
-/* ===============================
-   컨텍스트 메뉴 스타일
-   =============================== */
-
-.context-menu {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #dee2e6;
-    -fx-border-width: 1px;
-    -fx-border-radius: 6px;
-    -fx-background-radius: 6px;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 4);
-}
-
-.context-menu .menu-item {
-    -fx-padding: 8px 16px;
-    -fx-font-size: 12px;
-}
-
-.context-menu .menu-item:hover {
-    -fx-background-color: #e3f2fd;
-}
-
-.context-menu .separator {
-    -fx-background-color: #dee2e6;
-}
-
-/* ===============================
-   애니메이션 및 전환 효과
-   =============================== */
-
-.fade-in {
-    -fx-opacity: 0;
-    -fx-translate-y: 10px;
-}
-
-.fade-in:animated {
-    -fx-opacity: 1;
-    -fx-translate-y: 0px;
-}
-
-/* ===============================
-   다크모드 지원 (향후 확장용)
-   =============================== */
-
-.root.dark-theme {
-    -fx-background-color: #2c3e50;
-}
-
-.dark-theme .title-label {
-    -fx-text-fill: #ecf0f1;
-}
-
-.dark-theme .subtitle-label {
-    -fx-text-fill: #bdc3c7;
-}
-
-.dark-theme .table-view {
-    -fx-background-color: #34495e;
-    -fx-border-color: #7f8c8d;
-}
-
-.dark-theme .table-row-cell {
-    -fx-background-color: #34495e;
-    -fx-text-fill: #ecf0f1;
-}
-
-.dark-theme .table-row-cell:hover {
-    -fx-background-color: #3c4d5e;
-}
-
-.dark-theme .table-row-cell:selected {
-    -fx-background-color: #3498db;
-}
-
-/* ===============================
-   반응형 디자인 (창 크기별)
-   =============================== */
-
-/* 작은 창 크기 (800px 미만) */
-.root .compact-mode .title-label {
-    -fx-font-size: 22px;
-}
-
-.root .compact-mode .subtitle-label {
-    -fx-font-size: 14px;
-}
-
-.root .compact-mode .scan-button,
-.root .compact-mode .organize-button,
-.root .compact-mode .settings-button {
-    -fx-pref-width: 100px;
-    -fx-pref-height: 35px;
-    -fx-font-size: 12px;
-}
-
-/* ===============================
-   특수 효과 및 장식
-   =============================== */
-
-.glow-effect {
-    -fx-effect: dropshadow(gaussian, rgba(0,123,255,0.6), 8, 0, 0, 0);
-}
-
-.pulse-effect {
-    -fx-effect: dropshadow(gaussian, rgba(40,167,69,0.4), 6, 0, 0, 0);
-}
-
-.shadow-light {
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 4, 0, 0, 2);
-}
-
-.shadow-medium {
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 6, 0, 0, 3);
-}
-
-.shadow-heavy {
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 5);
 }
 
 /* ===============================
@@ -669,15 +555,6 @@
     -fx-border-radius: 12px;
 }
 
-.no-border {
-    -fx-border-width: 0;
-}
-
-.border-light {
-    -fx-border-color: #dee2e6;
-    -fx-border-width: 1px;
-}
-
 .bg-light {
     -fx-background-color: #f8f9fa;
 }
@@ -702,55 +579,36 @@
     -fx-background-color: #dc3545;
 }
 
-/* ===============================
-   다이얼로그 스타일
-   =============================== */
-
-.dialog-header {
-    -fx-background-color: #f8f9fa;
-    -fx-border-color: #dee2e6;
-    -fx-border-width: 0 0 1 0;
+.shadow-light {
+    -fx-effect: dropshadow(gaussian, #cccccc, 4, 0.1, 0, 2);
 }
 
-.dialog-title {
-    -fx-font-size: 18px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #495057;
+.shadow-medium {
+    -fx-effect: dropshadow(gaussian, #cccccc, 6, 0.2, 0, 3);
 }
 
-.dialog-buttons {
-    -fx-background-color: #f8f9fa;
-    -fx-border-color: #dee2e6;
-    -fx-border-width: 1 0 0 0;
+.shadow-heavy {
+    -fx-effect: dropshadow(gaussian, #cccccc, 10, 0.3, 0, 5);
 }
 
-.field-label {
-    -fx-font-weight: bold;
-    -fx-text-fill: #495057;
-    -fx-font-size: 13px;
+.padding-small {
+    -fx-padding: 5px;
 }
 
-.help-label {
-    -fx-text-fill: #6c757d;
-    -fx-font-size: 11px;
-    -fx-font-style: italic;
+.padding-medium {
+    -fx-padding: 10px;
 }
 
-.error-label {
-    -fx-text-fill: #dc3545;
-    -fx-font-size: 11px;
-    -fx-font-weight: bold;
+.padding-large {
+    -fx-padding: 20px;
 }
 
-.preview-section {
-    -fx-background-color: #f8f9fa;
-    -fx-border-color: #dee2e6;
-    -fx-border-width: 1;
-    -fx-border-radius: 5;
-    -fx-background-radius: 5;
+.disabled-state {
+    -fx-opacity: 0.5;
+    -fx-cursor: default;
 }
 
-.preview-result {
-    -fx-font-weight: bold;
-    -fx-font-size: 12px;
+.loading-state {
+    -fx-opacity: 0.7;
+    -fx-cursor: wait;
 }

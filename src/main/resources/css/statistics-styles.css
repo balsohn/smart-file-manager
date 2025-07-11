@@ -224,7 +224,7 @@
     -fx-border-color: transparent;
     -fx-text-fill: #495057;
     -fx-font-size: 13px;
-    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
 }
 
 /* 트리뷰 스타일 */

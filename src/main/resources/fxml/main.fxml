@@ -44,16 +44,8 @@
 
         <!-- 헤더 섹션 -->
         <VBox spacing="10.0" alignment="CENTER">
-            <Label text="📁📄 Smart File Manager" styleClass="main-title">
-                <font>
-                    <Font name="System Bold" size="24.0" />
-                </font>
-            </Label>
-            <Label text="AI 기반 스마트 파일 정리 도구" styleClass="subtitle">
-                <font>
-                    <Font size="14.0" />
-                </font>
-            </Label>
+            <Label text="📁📄 Smart File Manager" styleClass="main-title"/>
+            <Label text="AI 기반 스마트 파일 정리 도구" styleClass="subtitle"/>
 
             <!-- 상태 표시 영역 -->
             <HBox spacing="15.0" alignment="CENTER">
@@ -66,97 +58,45 @@
         <!-- 메인 버튼 섹션 -->
         <HBox spacing="15.0" alignment="CENTER">
             <Button fx:id="scanButton" text="🔍 스캔" onAction="#handleScanFiles"
-                    prefWidth="120.0" prefHeight="40.0" styleClass="scan-button">
-                <font>
-                    <Font name="System Bold" size="14.0" />
-                </font>
-            </Button>
+                    prefWidth="120.0" prefHeight="40.0" styleClass="scan-button"/>
             <Button fx:id="organizeButton" text="📂 정리" onAction="#handleOrganizeFiles"
-                    prefWidth="120.0" prefHeight="40.0" styleClass="organize-button" disable="true">
-                <font>
-                    <Font name="System Bold" size="14.0" />
-                </font>
-            </Button>
+                    prefWidth="120.0" prefHeight="40.0" styleClass="organize-button" disable="true"/>
             <Button fx:id="settingsButton" text="⚙️ 설정" onAction="#handleSettings"
-                    prefWidth="120.0" prefHeight="40.0" styleClass="settings-button">
-                <font>
-                    <Font name="System Bold" size="14.0" />
-                </font>
-            </Button>
+                    prefWidth="120.0" prefHeight="40.0" styleClass="settings-button"/>
         </HBox>
 
         <!-- AI 및 모니터링 컨트롤 영역 -->
         <HBox spacing="15.0" alignment="CENTER">
             <Button fx:id="aiAnalysisButton" text="🤖 AI 분석" onAction="#handleBatchAIAnalysis"
-                    prefWidth="120.0" prefHeight="35.0" styleClass="ai-button">
-                <font>
-                    <Font size="12.0" />
-                </font>
-            </Button>
+                    prefWidth="120.0" prefHeight="35.0" styleClass="ai-button"/>
             <Button fx:id="monitoringToggleButton" text="⚡ 모니터링 시작" onAction="#handleMonitoringToggle"
-                    prefWidth="140.0" prefHeight="35.0" styleClass="monitoring-button">
-                <font>
-                    <Font size="12.0" />
-                </font>
-            </Button>
+                    prefWidth="140.0" prefHeight="35.0" styleClass="monitoring-button"/>
             <Button text="📊 통계" onAction="#handleStatistics"
-                    prefWidth="100.0" prefHeight="35.0" styleClass="stats-button">
-                <font>
-                    <Font size="12.0" />
-                </font>
-            </Button>
+                    prefWidth="100.0" prefHeight="35.0" styleClass="stats-button"/>
         </HBox>
 
         <!-- 현재 작업 정보 -->
         <VBox spacing="5.0">
             <HBox spacing="10.0" alignment="CENTER_LEFT">
-                <Label text="📋 파일 목록" styleClass="section-title">
-                    <font>
-                        <Font name="System Bold" size="16.0" />
-                    </font>
-                </Label>
-                <Label fx:id="statsLabel" text="0 files" styleClass="stats-label">
-                    <font>
-                        <Font size="12.0" />
-                    </font>
-                </Label>
+                <Label text="📋 파일 목록" styleClass="section-title"/>
+                <Label fx:id="statsLabel" text="0 files" styleClass="stats-label"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Label fx:id="currentFileLabel" text="" styleClass="current-file-label">
-                    <font>
-                        <Font size="11.0" />
-                    </font>
-                </Label>
+                <Label fx:id="currentFileLabel" text="" styleClass="current-file-label"/>
             </HBox>
             
             <!-- 선택 컨트롤 영역 -->
             <HBox spacing="10.0" alignment="CENTER_LEFT">
                 <Button fx:id="selectAllButton" text="☑️ 전체 선택" onAction="#handleSelectAll"
-                        prefWidth="100.0" prefHeight="30.0" styleClass="select-button">
-                    <font>
-                        <Font size="11.0" />
-                    </font>
-                </Button>
+                        prefWidth="100.0" prefHeight="30.0" styleClass="select-button"/>
                 <Button fx:id="deselectAllButton" text="☐ 전체 해제" onAction="#handleDeselectAll"
-                        prefWidth="100.0" prefHeight="30.0" styleClass="select-button">
-                    <font>
-                        <Font size="11.0" />
-                    </font>
-                </Button>
-                <Label fx:id="selectedCountLabel" text="선택된 파일: 0개" styleClass="selected-count-label">
-                    <font>
-                        <Font size="11.0" />
-                    </font>
-                </Label>
+                        prefWidth="100.0" prefHeight="30.0" styleClass="select-button"/>
+                <Label fx:id="selectedCountLabel" text="선택된 파일: 0개" styleClass="selected-count-label"/>
             </HBox>
 
             <!-- 모니터링 폴더 정보 -->
             <HBox spacing="10.0" alignment="CENTER_LEFT" fx:id="monitoringInfoBox" visible="false" managed="false">
                 <Label text="📁 모니터링 폴더:"/>
-                <Label fx:id="monitoringFolderLabel" text="" styleClass="folder-path-label">
-                    <font>
-                        <Font size="11.0" />
-                    </font>
-                </Label>
+                <Label fx:id="monitoringFolderLabel" text="" styleClass="folder-path-label"/>
             </HBox>
         </VBox>
 
@@ -183,17 +123,9 @@
             <!-- 진행률 바 -->
             <VBox spacing="5.0">
                 <HBox spacing="10.0" alignment="CENTER_LEFT">
-                    <Label fx:id="statusLabel" text="준비됨" styleClass="status-label">
-                        <font>
-                            <Font name="System Bold" size="12.0" />
-                        </font>
-                    </Label>
+                    <Label fx:id="statusLabel" text="준비됨" styleClass="status-label"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="progressLabel" text="" styleClass="progress-label">
-                        <font>
-                            <Font size="11.0" />
-                        </font>
-                    </Label>
+                    <Label fx:id="progressLabel" text="" styleClass="progress-label"/>
                 </HBox>
                 <ProgressBar fx:id="progressBar" prefWidth="Infinity" prefHeight="8.0" progress="0.0"/>
             </VBox>
@@ -201,17 +133,9 @@
             <!-- 통계 정보 -->
             <HBox spacing="20.0" alignment="CENTER_LEFT">
                 <Label fx:id="statisticsLabel" text="분석된 파일: 0개 | 정리된 파일: 0개 | 총 크기: 0 B"
-                       styleClass="statistics-label">
-                    <font>
-                        <Font size="11.0" />
-                    </font>
-                </Label>
+                       styleClass="statistics-label"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Label text="Smart File Manager v1.0" styleClass="version-label">
-                    <font>
-                        <Font size="10.0" />
-                    </font>
-                </Label>
+                <Label text="Smart File Manager v1.0" styleClass="version-label"/>
             </HBox>
         </VBox>
 
@@ -222,11 +146,7 @@
                     <Insets top="10.0" bottom="10.0" left="10.0" right="10.0"/>
                 </padding>
                 <Label fx:id="detailContent" text="파일을 선택하면 상세 정보가 표시됩니다."
-                       wrapText="true" styleClass="detail-content">
-                    <font>
-                        <Font size="12.0" />
-                    </font>
-                </Label>
+                       wrapText="true" styleClass="detail-content"/>
             </VBox>
         </TitledPane>
     </VBox>
