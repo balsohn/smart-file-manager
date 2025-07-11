@@ -132,8 +132,7 @@ public class FileScanService {
         progressBar.setProgress(1.0);
         progressLabel.setText("스캔이 성공적으로 완료되었습니다");
 
-        // 다양한 상태 시뮬레이션을 위해 일부 파일의 상태 변경
-        addVariousStatusForTesting(fileInfoList);
+        // 파일 상태는 실제 처리 과정에서 업데이트됨
 
         // 파일 목록을 UI 테이블에 추가
         fileList.clear();
@@ -199,36 +198,6 @@ public class FileScanService {
         System.out.println("========================\n");
     }
 
-    /**
-     * 테스트를 위해 다양한 상태 추가
-     */
-    private void addVariousStatusForTesting(List<FileInfo> fileInfoList) {
-        if (fileInfoList.size() >= 5) {
-            // 첫 번째 파일: ORGANIZED
-            fileInfoList.get(0).setStatus(ProcessingStatus.ORGANIZED);
-
-            // 두 번째 파일: PENDING
-            fileInfoList.get(1).setStatus(ProcessingStatus.PENDING);
-
-            // 세 번째 파일: FAILED
-            if (fileInfoList.size() > 2) {
-                fileInfoList.get(2).setStatus(ProcessingStatus.FAILED);
-                fileInfoList.get(2).setErrorMessage("Permission denied");
-            }
-
-            // 네 번째 파일: SKIPPED
-            if (fileInfoList.size() > 3) {
-                fileInfoList.get(3).setStatus(ProcessingStatus.SKIPPED);
-            }
-
-            // 다섯 번째 파일: ORGANIZING
-            if (fileInfoList.size() > 4) {
-                fileInfoList.get(4).setStatus(ProcessingStatus.ORGANIZING);
-            }
-        }
-
-        System.out.println("[정보] 테스트용 다양한 상태 타입 추가됨");
-    }
 
     /**
      * 스캔 오류 시 UI 업데이트

@@ -47,6 +47,9 @@ public class FileInfo {
     private ProcessingStatus status;    // 처리 상태 열거형
     private String errorMessage;        // 오류 메시지 (처리 실패 시)
     private LocalDateTime processedAt;  // 처리 완료 시간
+    
+    // UI 상태
+    private boolean selected;           // 선택 상태 (체크박스용)
 
     // 파일명과 경로로 생성하는 편의 생성자
     public FileInfo(String fileName, String filePath) {
@@ -60,6 +63,7 @@ public class FileInfo {
         this.createdDate = LocalDateTime.now();
         this.modifiedDate = LocalDateTime.now();
         this.keywords = new ArrayList<>(); // 키워드 리스트 초기화
+        this.selected = true; // 기본적으로 선택된 상태로 설정
     }
 
     // 확장자 추출 메서드

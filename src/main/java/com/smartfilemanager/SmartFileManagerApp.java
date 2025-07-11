@@ -5,6 +5,7 @@ import com.smartfilemanager.model.AppConfig;
 import com.smartfilemanager.service.ConfigService;
 import com.smartfilemanager.ui.SystemTrayManager;
 import com.smartfilemanager.ui.ThemeManager;
+import com.smartfilemanager.util.FileTypeDetector;
 import com.smartfilemanager.util.Messages;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -52,6 +53,12 @@ public class SmartFileManagerApp extends Application {
             // 3. 설정 로드 및 테마 적용
             ConfigService configService = new ConfigService();
             AppConfig config = configService.getCurrentConfig();
+            
+            // 4. 커스텀 규칙 초기화
+            if (config.isUseCustomRules()) {
+                FileTypeDetector.initializeCustomRules(config.getCustomRulesFilePath());
+                System.out.println("[SUCCESS] 커스텀 규칙 초기화 완료");
+            }
 
             // 테마 매니저에 씬 등록
             ThemeManager.setScene(scene);
@@ -64,10 +71,10 @@ public class SmartFileManagerApp extends Application {
                 applyCSSStyles(scene);
             }
 
-            // 4. 스테이지 설정
+            // 5. 스테이지 설정
             setupStage(primaryStage, scene);
 
-            // 5. 시스템 트레이 설정 (설정에 따라)
+            // 6. 시스템 트레이 설정 (설정에 따라)
             if (config.isMinimizeToTray()) {
                 boolean traySetup = SystemTrayManager.setupSystemTray(primaryStage);
                 if (traySetup) {
@@ -83,7 +90,7 @@ public class SmartFileManagerApp extends Application {
                 }
             }
 
-            // 6. 애플리케이션 표시
+            // 7. 애플리케이션 표시
             primaryStage.show();
 
             System.out.println("[START] " + Messages.get("app.title") + " 시작 완료!");

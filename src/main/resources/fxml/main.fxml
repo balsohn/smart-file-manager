@@ -127,6 +127,27 @@
                     </font>
                 </Label>
             </HBox>
+            
+            <!-- 선택 컨트롤 영역 -->
+            <HBox spacing="10.0" alignment="CENTER_LEFT">
+                <Button fx:id="selectAllButton" text="☑️ 전체 선택" onAction="#handleSelectAll"
+                        prefWidth="100.0" prefHeight="30.0" styleClass="select-button">
+                    <font>
+                        <Font size="11.0" />
+                    </font>
+                </Button>
+                <Button fx:id="deselectAllButton" text="☐ 전체 해제" onAction="#handleDeselectAll"
+                        prefWidth="100.0" prefHeight="30.0" styleClass="select-button">
+                    <font>
+                        <Font size="11.0" />
+                    </font>
+                </Button>
+                <Label fx:id="selectedCountLabel" text="선택된 파일: 0개" styleClass="selected-count-label">
+                    <font>
+                        <Font size="11.0" />
+                    </font>
+                </Label>
+            </HBox>
 
             <!-- 모니터링 폴더 정보 -->
             <HBox spacing="10.0" alignment="CENTER_LEFT" fx:id="monitoringInfoBox" visible="false" managed="false">
@@ -142,7 +163,8 @@
         <!-- 파일 테이블 -->
         <TableView fx:id="fileTable" prefHeight="300.0" VBox.vgrow="ALWAYS">
             <columns>
-                <TableColumn fx:id="nameColumn" text="📄 파일명" prefWidth="280.0" minWidth="200.0"/>
+                <TableColumn fx:id="selectColumn" text="☑️ 선택" prefWidth="60.0" minWidth="60.0" maxWidth="60.0"/>
+                <TableColumn fx:id="nameColumn" text="📄 파일명" prefWidth="260.0" minWidth="200.0"/>
                 <TableColumn fx:id="categoryColumn" text="📂 카테고리" prefWidth="140.0" minWidth="100.0"/>
                 <TableColumn fx:id="sizeColumn" text="📏 크기" prefWidth="90.0" minWidth="80.0"/>
                 <TableColumn fx:id="statusColumn" text="📊 상태" prefWidth="110.0" minWidth="100.0"/>

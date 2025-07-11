@@ -92,6 +92,39 @@ public class ThemeManager {
     }
 
     /**
+     * 테마 토글 (UIUpdateManager와 연동)
+     */
+    public void toggleTheme(javafx.scene.Scene scene, com.smartfilemanager.manager.UIUpdateManager uiUpdateManager) {
+        try {
+            javafx.collections.ObservableList<String> stylesheets = scene.getStylesheets();
+            
+            boolean isDarkTheme = stylesheets.toString().contains("dark-theme.css");
+            
+            if (isDarkTheme) {
+                // 다크 테마 → 라이트 테마
+                stylesheets.clear();
+                stylesheets.add(getClass().getResource("/css/styles.css").toExternalForm());
+                uiUpdateManager.showTemporaryMessage(com.smartfilemanager.constants.MessageConstants.ThemeMessages.LIGHT_THEME_APPLIED);
+            } else {
+                // 라이트 테마 → 다크 테마
+                stylesheets.add(getClass().getResource("/css/dark-theme.css").toExternalForm());
+                uiUpdateManager.showTemporaryMessage(com.smartfilemanager.constants.MessageConstants.ThemeMessages.DARK_THEME_APPLIED);
+            }
+            
+            javafx.scene.Parent root = scene.getRoot();
+            if (!isDarkTheme) {
+                root.getStyleClass().add("dark-theme");
+            } else {
+                root.getStyleClass().remove("dark-theme");
+            }
+            
+        } catch (Exception e) {
+            // 에러 발생 시 임시 메시지로 표시
+            uiUpdateManager.showTemporaryMessage("테마 변경 중 오류가 발생했습니다");
+        }
+    }
+
+    /**
      * 테마 ID로 테마 적용
      */
     public static void applyThemeById(String themeId) {
