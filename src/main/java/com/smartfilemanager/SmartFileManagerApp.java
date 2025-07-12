@@ -8,6 +8,7 @@ import com.smartfilemanager.ui.ThemeManager;
 import com.smartfilemanager.util.FileTypeDetector;
 import com.smartfilemanager.util.Messages;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -38,6 +39,9 @@ public class SmartFileManagerApp extends Application {
     public void start(Stage primaryStage) {
         try {
             System.out.println("[INFO] 애플리케이션 시작 중...");
+
+            // JavaFX 애플리케이션이 마지막 창이 닫혀도 자동 종료되지 않도록 설정
+            Platform.setImplicitExit(false);
 
             // 1. FXML 파일 로드
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/main.fxml"));
@@ -77,12 +81,6 @@ public class SmartFileManagerApp extends Application {
                 boolean traySetup = SystemTrayManager.setupSystemTray(primaryStage);
                 if (traySetup) {
                     System.out.println("[SUCCESS] 시스템 트레이 설정 완료");
-
-                    // 창 닫기 이벤트를 트레이로 최소화로 변경
-                    primaryStage.setOnCloseRequest(event -> {
-                        event.consume(); // 기본 닫기 동작 취소
-                        SystemTrayManager.minimizeToTray();
-                    });
                 } else {
                     System.out.println("[WARNING] 시스템 트레이 설정 실패 - 일반 모드로 동작");
                 }
@@ -135,10 +133,8 @@ public class SmartFileManagerApp extends Application {
         // 애플리케이션 아이콘 설정 (있다면)
         setApplicationIcon(primaryStage);
 
-        // 창 닫기 이벤트 처리
-        primaryStage.setOnCloseRequest(event -> {
-            System.out.println("[INFO] 사용자가 애플리케이션을 종료했습니다.");
-        });
+        // 창 닫기 이벤트 처리 (시스템 트레이 설정 고려)
+        setupCloseRequestHandler(primaryStage);
 
         System.out.println("[SUCCESS] 스테이지 설정 완료");
     }
@@ -157,6 +153,36 @@ public class SmartFileManagerApp extends Application {
         } catch (Exception e) {
             System.out.println("[INFO] 애플리케이션 아이콘을 찾을 수 없습니다.");
         }
+    }
+
+    /**
+     * 창 닫기 이벤트 핸들러 설정
+     * 시스템 트레이 설정에 따라 다르게 동작
+     *
+     * @param primaryStage 메인 스테이지
+     */
+    private void setupCloseRequestHandler(Stage primaryStage) {
+        primaryStage.setOnCloseRequest(event -> {
+            try {
+                // 현재 설정 확인
+                ConfigService configService = new ConfigService();
+                AppConfig config = configService.loadConfig();
+                
+                if (config.isMinimizeToTray() && SystemTrayManager.isSetup()) {
+                    // 시스템 트레이가 활성화된 경우 트레이로 최소화
+                    event.consume(); // 기본 닫기 동작 취소
+                    SystemTrayManager.minimizeToTray();
+                    System.out.println("[INFO] 애플리케이션을 시스템 트레이로 최소화했습니다.");
+                } else {
+                    // 시스템 트레이가 비활성화된 경우 완전 종료
+                    System.out.println("[INFO] 사용자가 애플리케이션을 종료했습니다.");
+                    Platform.exit(); // 명시적으로 애플리케이션 종료
+                }
+            } catch (Exception e) {
+                System.err.println("[ERROR] 창 닫기 처리 중 오류: " + e.getMessage());
+                // 오류 발생 시 안전하게 종료
+            }
+        });
     }
 
     /**
@@ -182,13 +208,17 @@ public class SmartFileManagerApp extends Application {
 
     /**
      * 애플리케이션 종료 시 호출
+     * 트레이로 최소화된 경우에는 호출되지 않아야 함
      */
     @Override
     public void stop() throws Exception {
         System.out.println("[STOP] " + Messages.get("app.title") + " 종료 중...");
 
-        // 시스템 트레이에서 제거
-        SystemTrayManager.removeFromTray();
+        // 시스템 트레이에서 제거 (완전 종료 시에만)
+        if (SystemTrayManager.isSetup()) {
+            SystemTrayManager.removeFromTray();
+            System.out.println("[STOP] 시스템 트레이에서 제거됨");
+        }
 
         super.stop();
         System.out.println("[STOP] 애플리케이션 종료 완료");

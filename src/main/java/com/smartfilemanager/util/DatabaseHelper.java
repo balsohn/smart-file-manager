@@ -15,7 +15,7 @@ import java.util.Map;
  * SQLite 데이터베이스 관리 헬퍼 클래스
  * 파일 처리 히스토리, 통계, 설정을 로컬 데이터베이스에 저장합니다
  */
-public class DatabaseHelper {
+public class DatabaseHelper implements AutoCloseable {
 
     private static final String DB_DIR = System.getProperty("user.home") +
             File.separator + ".smartfilemanager";
@@ -152,6 +152,11 @@ public class DatabaseHelper {
      * 파일 처리 히스토리 저장
      */
     public void saveFileOperation(FileInfo fileInfo, String operationType) {
+        if (connection == null) {
+            System.err.println("[ERROR] 데이터베이스 연결이 없습니다.");
+            return;
+        }
+
         String sql = """
             INSERT INTO file_history 
             (file_name, file_path, original_location, target_location, file_size, 
@@ -184,6 +189,7 @@ public class DatabaseHelper {
 
         } catch (SQLException e) {
             System.err.println("[ERROR] 파일 작업 기록 실패: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -400,8 +406,9 @@ public class DatabaseHelper {
     }
 
     /**
-     * 데이터베이스 연결 종료
+     * 데이터베이스 연결 종료 (AutoCloseable 구현)
      */
+    @Override
     public void close() {
         try {
             if (connection != null && !connection.isClosed()) {
@@ -410,6 +417,55 @@ public class DatabaseHelper {
             }
         } catch (SQLException e) {
             System.err.println("[ERROR] 데이터베이스 연결 종료 실패: " + e.getMessage());
+        } finally {
+            connection = null; // 참조 제거로 메모리 누수 방지
+        }
+    }
+
+    /**
+     * 트랜잭션을 사용한 안전한 다중 파일 작업 저장
+     */
+    public void saveFileOperationsWithTransaction(List<FileInfo> fileInfos, String operationType) {
+        if (connection == null) {
+            System.err.println("[ERROR] 데이터베이스 연결이 없습니다.");
+            return;
+        }
+
+        try {
+            connection.setAutoCommit(false); // 트랜잭션 시작
+            
+            for (FileInfo fileInfo : fileInfos) {
+                saveFileOperation(fileInfo, operationType);
+            }
+            
+            connection.commit(); // 모든 작업 성공 시 커밋
+            System.out.println("[INFO] " + fileInfos.size() + "개 파일 작업이 트랜잭션으로 저장됨");
+            
+        } catch (SQLException e) {
+            try {
+                connection.rollback(); // 실패 시 롤백
+                System.err.println("[ERROR] 트랜잭션 롤백 실행됨");
+            } catch (SQLException rollbackE) {
+                System.err.println("[ERROR] 롤백 실패: " + rollbackE.getMessage());
+            }
+            System.err.println("[ERROR] 트랜잭션 저장 실패: " + e.getMessage());
+        } finally {
+            try {
+                connection.setAutoCommit(true); // 자동 커밋 복원
+            } catch (SQLException e) {
+                System.err.println("[ERROR] AutoCommit 복원 실패: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 연결 상태 확인
+     */
+    public boolean isConnectionValid() {
+        try {
+            return connection != null && !connection.isClosed() && connection.isValid(5);
+        } catch (SQLException e) {
+            return false;
         }
     }
 

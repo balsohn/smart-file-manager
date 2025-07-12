@@ -2,6 +2,7 @@ package com.smartfilemanager.service;
 
 import com.smartfilemanager.model.FileInfo;
 import com.smartfilemanager.model.ProcessingStatus;
+import com.smartfilemanager.util.FileOperationSafety;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.scene.control.ProgressBar;
@@ -33,11 +34,15 @@ public class FileOrganizerService {
     
     // 콜백 필드
     private ProgressCallback progressCallback;
+    
+    // 안전성 검사기
+    private final FileOperationSafety safety;
 
     public FileOrganizerService(ProgressBar progressBar, Label statusLabel, Label progressLabel) {
         this.progressBar = progressBar;
         this.statusLabel = statusLabel;
         this.progressLabel = progressLabel;
+        this.safety = new FileOperationSafety();
     }
     
     /**
@@ -122,6 +127,14 @@ public class FileOrganizerService {
      * 단일 파일 정리
      */
     public void organizeFile(FileInfo fileInfo, String targetRootPath) throws IOException {
+        Path sourceFilePath = Paths.get(fileInfo.getFilePath());
+        
+        // 0. 안전성 검사 - 파일 이동이 안전한지 확인
+        if (!safety.isSafeToOperate(sourceFilePath)) {
+            throw new IOException("파일 이동이 안전하지 않습니다: " + fileInfo.getFileName() + 
+                                " (보호된 시스템 파일 또는 잠금된 파일)");
+        }
+
         // 1. 대상 폴더 경로 결정
         String categoryPath = determineTargetPath(fileInfo, targetRootPath);
 
@@ -133,9 +146,11 @@ public class FileOrganizerService {
         String finalFileName = resolveFileNameConflict(targetDir, fileInfo.getFileName());
         Path targetFilePath = targetDir.resolve(finalFileName);
 
-        // 4. 파일 이동
-        Path sourceFilePath = Paths.get(fileInfo.getFilePath());
-        Files.move(sourceFilePath, targetFilePath, StandardCopyOption.REPLACE_EXISTING);
+        // 4. 안전한 파일 이동 (백업 및 롤백 지원)
+        boolean moveResult = safety.safeFileMove(sourceFilePath, targetFilePath);
+        if (!moveResult) {
+            throw new IOException("안전한 파일 이동 실패: " + fileInfo.getFileName());
+        }
 
         // 5. 파일 정보 업데이트
         fileInfo.setFilePath(targetFilePath.toString());

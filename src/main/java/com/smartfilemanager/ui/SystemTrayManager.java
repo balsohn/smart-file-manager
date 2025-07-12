@@ -105,9 +105,17 @@ public class SystemTrayManager {
      */
     public static void removeFromTray() {
         if (systemTray != null && trayIcon != null) {
+            // 이벤트 리스너 정리 (메모리 누수 방지)
+            ActionListener[] listeners = trayIcon.getActionListeners();
+            for (ActionListener listener : listeners) {
+                trayIcon.removeActionListener(listener);
+            }
+            
             systemTray.remove(trayIcon);
+            trayIcon = null; // 참조 제거
+            primaryStage = null; // static 참조 제거
             isSetup = false;
-            System.out.println("[INFO] 시스템 트레이에서 제거됨");
+            System.out.println("[INFO] 시스템 트레이에서 제거됨 (메모리 정리 완료)");
         }
     }
 
@@ -263,5 +271,40 @@ public class SystemTrayManager {
      */
     public static boolean isSetup() {
         return isSetup;
+    }
+
+    /**
+     * 시스템 트레이 동적 활성화
+     * 런타임 중에 설정이 변경될 때 사용
+     */
+    public static boolean enableSystemTray() {
+        if (primaryStage == null) {
+            System.out.println("[WARNING] 트레이 활성화 실패: primaryStage가 설정되지 않음");
+            return false;
+        }
+        
+        if (!isSetup) {
+            return setupSystemTray(primaryStage);
+        }
+        return true;
+    }
+
+    /**
+     * 시스템 트레이 동적 비활성화
+     * 런타임 중에 설정이 변경될 때 사용
+     */
+    public static void disableSystemTray() {
+        if (isSetup && systemTray != null && trayIcon != null) {
+            // 이벤트 리스너 정리
+            ActionListener[] listeners = trayIcon.getActionListeners();
+            for (ActionListener listener : listeners) {
+                trayIcon.removeActionListener(listener);
+            }
+            
+            systemTray.remove(trayIcon);
+            trayIcon = null; // 참조 제거 (전체 제거와 달리 primaryStage는 유지)
+            System.out.println("[INFO] 시스템 트레이에서 제거됨");
+        }
+        isSetup = false;
     }
 }

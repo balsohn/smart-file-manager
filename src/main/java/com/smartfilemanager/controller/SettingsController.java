@@ -241,6 +241,12 @@ public class SettingsController implements Initializable {
             }
         });
 
+        // 시스템 트레이 체크박스 이벤트
+        minimizeToTrayCheckBox.setOnAction(e -> {
+            boolean trayEnabled = minimizeToTrayCheckBox.isSelected();
+            handleSystemTrayToggle(trayEnabled);
+        });
+
         // 자동 정리 체크박스 이벤트
         autoOrganizeCheckBox.setOnAction(e -> {
             boolean autoEnabled = autoOrganizeCheckBox.isSelected();
@@ -843,6 +849,39 @@ public class SettingsController implements Initializable {
     }
 
     /**
+     * 시스템 트레이 토글 처리
+     */
+    private void handleSystemTrayToggle(boolean trayEnabled) {
+        try {
+            if (trayEnabled) {
+                // 시스템 트레이 활성화
+                if (com.smartfilemanager.ui.SystemTrayManager.isSystemTraySupported()) {
+                    boolean success = com.smartfilemanager.ui.SystemTrayManager.enableSystemTray();
+                    if (success) {
+                        System.out.println("[INFO] 시스템 트레이 활성화됨");
+                        showAlert("시스템 트레이", "시스템 트레이가 활성화되었습니다.\n창을 닫으면 트레이로 최소화됩니다.", Alert.AlertType.INFORMATION);
+                    } else {
+                        System.err.println("[ERROR] 시스템 트레이 활성화 실패");
+                        minimizeToTrayCheckBox.setSelected(false);
+                        showAlert("오류", "시스템 트레이 활성화에 실패했습니다.", Alert.AlertType.ERROR);
+                    }
+                } else {
+                    System.err.println("[ERROR] 시스템 트레이가 지원되지 않음");
+                    minimizeToTrayCheckBox.setSelected(false);
+                    showAlert("지원 안함", "이 시스템에서는 시스템 트레이가 지원되지 않습니다.", Alert.AlertType.WARNING);
+                }
+            } else {
+                // 시스템 트레이 비활성화
+                com.smartfilemanager.ui.SystemTrayManager.disableSystemTray();
+                System.out.println("[INFO] 시스템 트레이 비활성화됨");
+            }
+        } catch (Exception e) {
+            System.err.println("[ERROR] 시스템 트레이 토글 처리 중 오류: " + e.getMessage());
+            showAlert("오류", "시스템 트레이 설정 변경 중 오류가 발생했습니다: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    /**
      * 테마 표시명을 테마 ID로 변환
      */
     private String getThemeIdFromDisplayName(String displayName) {
@@ -899,7 +938,7 @@ public class SettingsController implements Initializable {
     private String getThemeFromComboBox() {
         String selectedTheme = themeComboBox.getValue();
         if (selectedTheme != null) {
-            return selectedTheme.toLowerCase().contains("dark") ? "dark" : "light";
+            return getThemeIdFromDisplayName(selectedTheme);
         }
         return "light";
     }

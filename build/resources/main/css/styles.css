@@ -567,7 +567,7 @@
 .help-text-area {
     -fx-background-color: #f8f9fa;
     -fx-text-fill: #333333;
-    -fx-font-family: "Segoe UI", "Apple SD Gothic Neo", "Noto Sans CJK KR", sans-serif;
+    -fx-font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans CJK KR", sans-serif;
     -fx-font-size: 14px;
     -fx-line-spacing: 2px;
     -fx-border-color: #dee2e6;

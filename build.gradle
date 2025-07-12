@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'application'
     id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'com.smartfilemanager'
@@ -17,7 +18,7 @@ compileTestJava.options.encoding = 'UTF-8'
 javafx {
     version = '17.0.2'  // JDK 17과 호환되는 버전
     modules = ['javafx.controls', 'javafx.fxml', 'javafx.graphics', 'javafx.base']
-    configuration = 'compileOnly'  // 컴파일 시에만 사용
+    configuration = 'implementation'  // 런타임에도 포함
 }
 
 repositories {
@@ -25,17 +26,27 @@ repositories {
 }
 
 dependencies {
-    // JavaFX 런타임 의존성 명시적 추가
+    // JavaFX 런타임 의존성 명시적 추가 (모든 플랫폼 포함)
     implementation "org.openjfx:javafx-controls:17.0.2"
     implementation "org.openjfx:javafx-fxml:17.0.2"
     implementation "org.openjfx:javafx-graphics:17.0.2"
     implementation "org.openjfx:javafx-base:17.0.2"
 
-    // Windows 플랫폼 전용 (필요한 경우)
-    runtimeOnly "org.openjfx:javafx-controls:17.0.2:win"
-    runtimeOnly "org.openjfx:javafx-fxml:17.0.2:win"
-    runtimeOnly "org.openjfx:javafx-graphics:17.0.2:win"
-    runtimeOnly "org.openjfx:javafx-base:17.0.2:win"
+    // 크로스 플랫폼 지원을 위한 네이티브 라이브러리들
+    implementation "org.openjfx:javafx-controls:17.0.2:win"
+    implementation "org.openjfx:javafx-fxml:17.0.2:win"
+    implementation "org.openjfx:javafx-graphics:17.0.2:win"
+    implementation "org.openjfx:javafx-base:17.0.2:win"
+    
+    implementation "org.openjfx:javafx-controls:17.0.2:linux"
+    implementation "org.openjfx:javafx-fxml:17.0.2:linux"
+    implementation "org.openjfx:javafx-graphics:17.0.2:linux"
+    implementation "org.openjfx:javafx-base:17.0.2:linux"
+    
+    implementation "org.openjfx:javafx-controls:17.0.2:mac"
+    implementation "org.openjfx:javafx-fxml:17.0.2:mac"
+    implementation "org.openjfx:javafx-graphics:17.0.2:mac"
+    implementation "org.openjfx:javafx-base:17.0.2:mac"
 
     // Lombok
     compileOnly 'org.projectlombok:lombok:1.18.30'
@@ -58,7 +69,7 @@ dependencies {
 
 // 메인 애플리케이션 설정
 application {
-    mainClass = 'com.smartfilemanager.SmartFileManagerApp'
+    mainClass = 'com.smartfilemanager.Launcher'
 }
 
 // 테스트 설정
@@ -282,10 +293,40 @@ jar {
 
     manifest {
         attributes(
-                'Main-Class': 'com.smartfilemanager.SmartFileManagerApp',
+                'Main-Class': 'com.smartfilemanager.Launcher',
                 'Implementation-Version': version
         )
     }
+}
+
+// Shadow JAR 설정 (Fat JAR 생성)
+shadowJar {
+    archiveBaseName = 'Smart-File-Manager'
+    archiveClassifier = ''
+    archiveVersion = ''
+    
+    // 메인 클래스 설정
+    manifest {
+        attributes(
+                'Main-Class': 'com.smartfilemanager.Launcher',
+                'Implementation-Version': version,
+                'Implementation-Title': 'Smart File Manager',
+                'Implementation-Vendor': 'Smart File Manager Team'
+        )
+    }
+    
+    // 중복 파일 처리 전략
+    mergeServiceFiles()
+    
+    // 제외할 파일들 (불필요한 파일 제거로 크기 최적화)
+    exclude 'META-INF/*.RSA'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/maven/**'
+    // module-info.class는 JavaFX 모듈 로딩에 필요하므로 제외하지 않음
+    
+    // 최종 파일명: Smart-File-Manager.jar
+    destinationDirectory = file("$buildDir/libs")
 }
 
 // 도움말 태스크
@@ -472,4 +513,308 @@ task runApp(type: JavaExec) {
 clean {
     delete 'build'
     delete '.gradle'
+}
+
+// ===============================
+// 배포용 태스크들
+// ===============================
+
+// Fat JAR 빌드 (메인 태스크)
+task buildExecutableJar {
+    group = 'distribution'
+    description = '실행 가능한 Fat JAR 파일을 생성합니다'
+    
+    dependsOn shadowJar
+    
+    doLast {
+        def jarFile = file("$buildDir/libs/Smart-File-Manager.jar")
+        if (jarFile.exists()) {
+            println ""
+            println "🎉 실행 가능한 JAR 파일이 생성되었습니다!"
+            println "📁 위치: ${jarFile.absolutePath}"
+            println "📏 크기: ${jarFile.length() / (1024 * 1024)} MB"
+            println ""
+            println "🚀 실행 방법:"
+            println "1. 더블클릭으로 실행"
+            println "2. 또는 명령어: java -jar Smart-File-Manager.jar"
+            println ""
+        } else {
+            println "❌ JAR 파일 생성에 실패했습니다."
+        }
+    }
+}
+
+// 실행 스크립트 생성
+task createRunScripts {
+    group = 'distribution'
+    description = '실행 보조 스크립트를 생성합니다'
+    
+    dependsOn shadowJar
+    
+    doLast {
+        // Windows 배치 파일 생성
+        def batFile = file("$buildDir/libs/run.bat")
+        batFile.text = '''@echo off
+echo Smart File Manager 실행 중...
+echo.
+
+:: Java 설치 확인
+java -version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ❌ Java가 설치되지 않았습니다.
+    echo.
+    echo Java 17 이상을 설치해주세요:
+    echo https://adoptium.net/
+    echo.
+    pause
+    exit /b 1
+)
+
+:: JAR 파일 존재 확인
+if not exist "Smart-File-Manager.jar" (
+    echo ❌ Smart-File-Manager.jar 파일을 찾을 수 없습니다.
+    echo.
+    pause
+    exit /b 1
+)
+
+:: 실행
+echo ✅ Smart File Manager 시작...
+java -jar Smart-File-Manager.jar
+
+if %errorlevel% neq 0 (
+    echo.
+    echo ❌ 실행 중 오류가 발생했습니다.
+    echo Java 버전을 확인해주세요 (Java 17 이상 필요)
+    echo.
+    pause
+)
+'''
+
+        // Linux/Mac 쉘 스크립트 생성
+        def shFile = file("$buildDir/libs/run.sh")
+        shFile.text = '''#!/bin/bash
+
+echo "Smart File Manager 실행 중..."
+echo
+
+# Java 설치 확인
+if ! command -v java &> /dev/null; then
+    echo "❌ Java가 설치되지 않았습니다."
+    echo
+    echo "Java 17 이상을 설치해주세요:"
+    echo "https://adoptium.net/"
+    echo
+    read -p "계속하려면 Enter를 누르세요..."
+    exit 1
+fi
+
+# JAR 파일 존재 확인
+if [ ! -f "Smart-File-Manager.jar" ]; then
+    echo "❌ Smart-File-Manager.jar 파일을 찾을 수 없습니다."
+    echo
+    read -p "계속하려면 Enter를 누르세요..."
+    exit 1
+fi
+
+# 실행
+echo "✅ Smart File Manager 시작..."
+java -jar Smart-File-Manager.jar
+
+if [ $? -ne 0 ]; then
+    echo
+    echo "❌ 실행 중 오류가 발생했습니다."
+    echo "Java 버전을 확인해주세요 (Java 17 이상 필요)"
+    echo
+    read -p "계속하려면 Enter를 누르세요..."
+fi
+'''
+        
+        // 실행 권한 부여 (Linux/Mac)
+        if (!System.getProperty('os.name').toLowerCase().contains('windows')) {
+            shFile.setExecutable(true)
+        }
+        
+        println "✅ 실행 스크립트가 생성되었습니다:"
+        println "   - ${batFile.absolutePath} (Windows용)"
+        println "   - ${shFile.absolutePath} (Linux/Mac용)"
+    }
+}
+
+// README 파일 생성
+task createReadme {
+    group = 'distribution'
+    description = '실행 안내 README 파일을 생성합니다'
+    
+    doLast {
+        def readmeFile = file("$buildDir/libs/README.txt")
+        readmeFile.text = '''🗂️ Smart File Manager - 실행 안내
+========================================
+
+📋 시스템 요구사항:
+• Java 17 이상 설치 필요
+• Windows 10/11, macOS 10.14+, Ubuntu 18.04+ 지원
+• 최소 4GB RAM, 100MB 디스크 공간
+
+🚀 실행 방법:
+
+방법 1: 더블클릭 실행 (가장 간단)
+• Smart-File-Manager.jar 파일을 더블클릭
+
+방법 2: 실행 스크립트 사용
+• Windows: run.bat 더블클릭
+• Linux/Mac: 터미널에서 ./run.sh 실행
+
+방법 3: 명령줄 실행
+• 터미널/명령 프롬프트에서:
+  java -jar Smart-File-Manager.jar
+
+🔧 문제 해결:
+
+Q: 더블클릭해도 실행되지 않아요
+A: Java가 설치되어 있는지 확인하세요
+   https://adoptium.net/ 에서 다운로드
+
+Q: "모듈을 찾을 수 없습니다" 오류
+A: Java 11 이상이 설치되어 있는지 확인하세요
+
+Q: 한글이 깨져 보여요
+A: 시스템 언어 설정을 확인하거나 
+   실행 시 -Dfile.encoding=UTF-8 옵션 추가
+
+📞 지원:
+• GitHub: https://github.com/balsohn/smart-file-manager
+• 문제 신고: GitHub Issues 탭 이용
+
+© 2024 Smart File Manager Team
+'''
+        
+        println "✅ README 파일이 생성되었습니다: ${readmeFile.absolutePath}"
+    }
+}
+
+// 전체 배포 패키지 생성
+task createDistribution {
+    group = 'distribution'
+    description = '완전한 배포 패키지를 생성합니다'
+    
+    dependsOn buildExecutableJar, createRunScripts, createReadme
+    
+    doLast {
+        println ""
+        println "🎉 배포 패키지 생성 완료!"
+        println "📁 위치: $buildDir/libs/"
+        println ""
+        println "📦 포함된 파일들:"
+        println "• Smart-File-Manager.jar - 메인 실행 파일"
+        println "• run.bat - Windows 실행 스크립트"
+        println "• run.sh - Linux/Mac 실행 스크립트"  
+        println "• README.txt - 실행 안내서"
+        println ""
+        println "🚀 이제 libs 폴더를 압축해서 배포하세요!"
+    }
+}
+
+// ===============================
+// 네이티브 배포 태스크들 (jpackage)
+// ===============================
+
+// Windows EXE 파일 생성
+task createWindowsExe {
+    group = 'distribution'
+    description = 'Windows EXE 실행 파일을 생성합니다'
+    
+    dependsOn shadowJar
+    
+    doLast {
+        def jpackageCmd = [
+            '"C:\\Program Files\\Java\\jdk-17\\bin\\jpackage.exe"',
+            '--input', '"' + file("$buildDir/libs").absolutePath + '"',
+            '--main-jar', 'Smart-File-Manager.jar',
+            '--main-class', 'com.smartfilemanager.Launcher',
+            '--name', 'SmartFileManager',
+            '--app-version', version,
+            '--description', '"AI 기반 스마트 파일 정리 도구"',
+            '--vendor', '"Smart File Manager Team"',
+            '--copyright', '"© 2024 Smart File Manager Team"',
+            '--icon', '"' + file('src/main/resources/app_icon.ico').absolutePath + '"',
+            '--dest', '"' + file("$buildDir/exe").absolutePath + '"',
+            '--type', 'app-image'
+        ]
+        
+        println "🔧 Windows EXE 파일 생성 중..."
+        println "명령어: " + jpackageCmd.join(' ')
+        
+        def result = exec {
+            commandLine 'cmd', '/c', jpackageCmd.join(' ')
+            ignoreExitValue = true
+        }
+        
+        if (result.exitValue == 0) {
+            println "✅ Windows EXE 파일이 생성되었습니다!"
+            println "📁 위치: $buildDir/exe/"
+        } else {
+            println "❌ EXE 파일 생성에 실패했습니다."
+        }
+    }
+}
+
+// Windows MSI 설치 파일 생성
+task createWindowsMsi {
+    group = 'distribution'
+    description = 'Windows MSI 설치 파일을 생성합니다'
+    
+    dependsOn shadowJar
+    
+    doLast {
+        def jpackageCmd = [
+            '"C:\\Program Files\\Java\\jdk-17\\bin\\jpackage.exe"',
+            '--app-image', '"' + file("$buildDir/exe/SmartFileManager").absolutePath + '"',
+            '--name', 'SmartFileManager',
+            '--app-version', version,
+            '--description', '"AI 기반 스마트 파일 정리 도구"',
+            '--vendor', '"Smart File Manager Team"',
+            '--copyright', '"© 2024 Smart File Manager Team"',
+            '--dest', '"' + file("$buildDir/msi").absolutePath + '"',
+            '--type', 'msi',
+            '--win-shortcut',
+            '--win-menu',
+            '--win-dir-chooser'
+        ]
+        
+        println "🔧 Windows MSI 설치 파일 생성 중..."
+        println "명령어: " + jpackageCmd.join(' ')
+        
+        def result = exec {
+            commandLine 'cmd', '/c', jpackageCmd.join(' ')
+            ignoreExitValue = true
+        }
+        
+        if (result.exitValue == 0) {
+            println "✅ Windows MSI 설치 파일이 생성되었습니다!"
+            println "📁 위치: $buildDir/msi/"
+        } else {
+            println "❌ MSI 파일 생성에 실패했습니다."
+        }
+    }
+}
+
+// 모든 배포 파일 생성
+task createAllDistributions {
+    group = 'distribution'
+    description = '모든 배포 파일을 생성합니다 (JAR, EXE, MSI)'
+    
+    dependsOn createDistribution, createWindowsExe, createWindowsMsi
+    
+    doLast {
+        println ""
+        println "🎉 모든 배포 파일 생성 완료!"
+        println ""
+        println "📦 생성된 파일들:"
+        println "1. JAR 파일: $buildDir/libs/Smart-File-Manager.jar"
+        println "2. EXE 파일: $buildDir/exe/"
+        println "3. MSI 설치 파일: $buildDir/msi/"
+        println ""
+        println "🚀 배포 준비 완료!"
+    }
 }

@@ -2,6 +2,7 @@ package com.smartfilemanager.service;
 
 import com.smartfilemanager.model.FileInfo;
 import com.smartfilemanager.model.ProcessingStatus;
+import com.smartfilemanager.util.FileOperationSafety;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.scene.control.ProgressBar;
@@ -9,15 +10,35 @@ import javafx.scene.control.Label;
 import javafx.collections.ObservableList;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 파일 스캔 담당 서비스 클래스 (강화된 분석 기능 포함)
  * 백그라운드에서 파일 스캔 작업을 수행합니다.
  */
 public class FileScanService {
+
+    // 절대 건드리면 안 되는 핵심 시스템 디렉토리
+    private static final Set<String> CRITICAL_SYSTEM_DIRECTORIES = Set.of(
+        "system32", "windows", "boot", "recovery", 
+        "$recycle.bin", "system volume information", 
+        "windows.old", "perflogs", "documents and settings"
+    );
+
+    // 경고와 함께 스캔은 허용하지만 신중하게 처리할 디렉토리들
+    private static final Set<String> SENSITIVE_DIRECTORIES = Set.of(
+        "program files", "program files (x86)", "programdata"
+    );
+
+    // 절대 스캔하면 안 되는 시스템 루트 경로들
+    private static final Set<String> CRITICAL_SYSTEM_ROOTS = Set.of(
+        "c:\\windows", "c:\\system32"
+    );
 
     // 콜백 인터페이스
     @FunctionalInterface
@@ -30,6 +51,7 @@ public class FileScanService {
     private Label progressLabel;
     private ObservableList<FileInfo> fileList;
     private FileAnalysisService analysisService;
+    private FileOperationSafety safetyChecker;
     
     // 콜백 필드
     private ProgressCallback progressCallback;
@@ -40,6 +62,7 @@ public class FileScanService {
         this.progressLabel = progressLabel;
         this.fileList = fileList;
         this.analysisService = new FileAnalysisService();
+        this.safetyChecker = new FileOperationSafety();
     }
     
     /**
@@ -50,9 +73,46 @@ public class FileScanService {
     }
 
     /**
+     * 디렉토리가 스캔하기에 안전한지 확인
+     */
+    private boolean isDirectorySafeToScan(File directory) {
+        String dirPath = directory.getAbsolutePath().toLowerCase();
+        
+        // 절대 건드리면 안 되는 핵심 시스템 디렉토리 확인
+        if (CRITICAL_SYSTEM_DIRECTORIES.stream().anyMatch(dirPath::contains)) {
+            System.err.println("[SAFETY] 핵심 시스템 디렉토리로 스캔이 거부됨: " + directory.getAbsolutePath());
+            return false;
+        }
+        
+        // 절대 스캔하면 안 되는 시스템 루트 경로 확인
+        if (CRITICAL_SYSTEM_ROOTS.stream().anyMatch(dirPath::startsWith)) {
+            System.err.println("[SAFETY] 시스템 루트 디렉토리로 스캔이 거부됨: " + directory.getAbsolutePath());
+            return false;
+        }
+        
+        // 민감한 디렉토리는 경고와 함께 허용
+        if (SENSITIVE_DIRECTORIES.stream().anyMatch(dirPath::contains)) {
+            System.out.println("[WARNING] 민감한 디렉토리를 스캔합니다. 시스템 파일들은 자동으로 보호됩니다: " + directory.getAbsolutePath());
+            // 스캔은 허용하되 파일 단위에서 더 엄격하게 검사
+        }
+        
+        return true;
+    }
+
+    /**
      * 폴더 스캔을 백그라운드에서 시작합니다.
      */
     public void startFileScan(File directory) {
+        // 안전성 검사 먼저 수행
+        if (!isDirectorySafeToScan(directory)) {
+            Platform.runLater(() -> {
+                statusLabel.setText("⚠️ 보안상 스캔할 수 없는 디렉토리입니다");
+                statusLabel.setStyle("-fx-text-fill: #dc3545; -fx-font-weight: bold;");
+                progressLabel.setText("스캔이 보안상 차단되었습니다");
+            });
+            return;
+        }
+
         // UI 상태 업데이트 (스캔 시작)
         updateUIForScanStart();
 
@@ -76,6 +136,14 @@ public class FileScanService {
                 for (File file : files) {
                     if (file.isFile()) { // 파일만 처리 (디렉토리 제외)
                         try {
+                            // 스캔용 안전성 검사 (더 관대한 기준)
+                            Path filePath = Paths.get(file.getAbsolutePath());
+                            if (!safetyChecker.isSafeToScan(filePath)) {
+                                System.out.println("[SAFETY] 보호된 파일 스캔에서 제외: " + file.getName());
+                                processedFiles++;
+                                continue; // 안전하지 않은 파일은 건너뛰기
+                            }
+
                             // 강화된 파일 분석 사용
                             FileInfo fileInfo = analysisService.analyzeFile(file.getAbsolutePath());
                             fileInfoList.add(fileInfo);
@@ -240,7 +308,13 @@ public class FileScanService {
     public List<FileInfo> scanFiles(java.nio.file.Path directory) throws Exception {
         System.out.println("[정보] 동기식 파일 스캔 시작: " + directory);
         
+        // 디렉토리 안전성 검사
+        if (!isDirectorySafeToScan(directory.toFile())) {
+            throw new SecurityException("보안상 스캔할 수 없는 디렉토리입니다: " + directory);
+        }
+        
         List<FileInfo> scannedFiles = new ArrayList<>();
+        int skippedFiles = 0;
         
         try (java.util.stream.Stream<java.nio.file.Path> paths = java.nio.file.Files.walk(directory)) {
             List<java.nio.file.Path> filePaths = paths
@@ -254,6 +328,18 @@ public class FileScanService {
                 current++;
                 
                 try {
+                    // 스캔용 안전성 검사 (더 관대한 기준)
+                    if (!safetyChecker.isSafeToScan(filePath)) {
+                        System.out.println("[SAFETY] 보호된 파일 스캔에서 제외: " + filePath.getFileName());
+                        skippedFiles++;
+                        
+                        // 진행률 콜백 호출 (건너뛴 파일도 포함)
+                        if (progressCallback != null) {
+                            progressCallback.onProgress(current, totalFiles, filePath.getFileName().toString() + " (건너뜀)");
+                        }
+                        continue;
+                    }
+
                     // FileInfo 객체 생성
                     FileInfo fileInfo = analysisService.analyzeFile(filePath.toString());
                     scannedFiles.add(fileInfo);
@@ -268,7 +354,7 @@ public class FileScanService {
                 }
             }
             
-            System.out.println("[성공] " + scannedFiles.size() + "개 파일 스캔 완료");
+            System.out.println("[성공] " + scannedFiles.size() + "개 파일 스캔 완료 (" + skippedFiles + "개 보호된 파일 제외)");
             return scannedFiles;
             
         } catch (Exception e) {
