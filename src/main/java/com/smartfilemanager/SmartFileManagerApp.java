@@ -60,16 +60,14 @@ public class SmartFileManagerApp extends Application {
                 System.out.println("[SUCCESS] 커스텀 규칙 초기화 완료");
             }
 
-            // 테마 매니저에 씬 등록
-            ThemeManager.setScene(scene);
-
-            // 설정에서 테마 적용
-            if (config.getTheme() != null) {
-                ThemeManager.applyThemeById(config.getTheme());
-            } else {
-                // 기본 CSS 스타일시트 적용
-                applyCSSStyles(scene);
-            }
+            // 설정에서 테마 로드
+            ThemeManager.loadThemeFromConfig();
+            
+            // 테마 매니저에 메인 씬 등록 및 현재 테마 적용
+            ThemeManager.setMainScene(scene);
+            ThemeManager.applyCurrentTheme(scene);
+            
+            System.out.println("[SUCCESS] 설정에서 테마 적용 완료: " + ThemeManager.getCurrentTheme().getDisplayName());
 
             // 5. 스테이지 설정
             setupStage(primaryStage, scene);
@@ -202,6 +200,10 @@ public class SmartFileManagerApp extends Application {
      * @param args 명령행 인수
      */
     public static void main(String[] args) {
+        // UTF-8 인코딩 강제 설정 (이모지 지원 향상)
+        System.setProperty("file.encoding", "UTF-8");
+        System.setProperty("sun.jnu.encoding", "UTF-8");
+        
         // 애플리케이션 시작 로그
         System.out.println("=".repeat(60));
         System.out.println("🗂️  Smart File Manager v1.0");
@@ -231,11 +233,42 @@ public class SmartFileManagerApp extends Application {
             System.out.println("[SYSTEM] JavaFX 버전: " + System.getProperty("javafx.version", "Unknown"));
             System.out.println("[SYSTEM] 운영체제: " + System.getProperty("os.name") + " " +
                     System.getProperty("os.version"));
+            System.out.println("[SYSTEM] 인코딩: " + System.getProperty("file.encoding"));
             System.out.println("[SYSTEM] 사용자 홈: " + System.getProperty("user.home"));
             System.out.println("[SYSTEM] 작업 디렉토리: " + System.getProperty("user.dir"));
+            
+            // 이모지 지원 폰트 확인
+            checkEmojiSupport();
+            
             System.out.println("-".repeat(60));
         } catch (Exception e) {
             System.out.println("[WARNING] 시스템 정보 출력 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 이모지 지원 폰트 확인
+     */
+    private static void checkEmojiSupport() {
+        try {
+            String osName = System.getProperty("os.name").toLowerCase();
+            System.out.print("[EMOJI] 이모지 지원: ");
+            
+            if (osName.contains("windows")) {
+                System.out.println("Windows (Segoe UI Emoji 사용)");
+            } else if (osName.contains("mac")) {
+                System.out.println("macOS (Apple Color Emoji 사용)");
+            } else if (osName.contains("linux")) {
+                System.out.println("Linux (Noto Color Emoji 권장)");
+            } else {
+                System.out.println("알 수 없는 OS (기본 폰트 사용)");
+            }
+            
+            // 이모지 테스트 출력
+            System.out.println("[EMOJI] 테스트: 🗂️📁⚙️📊🔧💾 (정상 표시되면 이모지 지원됨)");
+            
+        } catch (Exception e) {
+            System.out.println("[WARNING] 이모지 지원 확인 실패: " + e.getMessage());
         }
     }
 }

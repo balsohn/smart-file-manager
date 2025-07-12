@@ -728,6 +728,61 @@ public class FileAnalysisService {
         return (lastDot == -1) ? "" : fileName.substring(lastDot + 1);
     }
 
+    // 진행률 콜백 인터페이스 (FileScanService와 동일)
+    @FunctionalInterface
+    public interface ProgressCallback {
+        void onProgress(int current, int total, String currentFile);
+    }
+    
+    private ProgressCallback progressCallback;
+    
+    /**
+     * 진행률 콜백 설정
+     */
+    public void setProgressCallback(ProgressCallback progressCallback) {
+        this.progressCallback = progressCallback;
+    }
+    
+    /**
+     * 배치 분석 메서드 (FileOperationController에서 사용)
+     */
+    public void analyzeBatch(javafx.collections.ObservableList<com.smartfilemanager.model.FileInfo> fileList) throws Exception {
+        System.out.println("[정보] AI 배치 분석 시작: " + fileList.size() + "개 파일");
+        
+        if (!aiAnalysisEnabled) {
+            throw new Exception("AI 분석이 활성화되지 않았습니다. 설정에서 AI API 키를 확인해주세요.");
+        }
+        
+        int totalFiles = fileList.size();
+        int processedCount = 0;
+        
+        for (com.smartfilemanager.model.FileInfo fileInfo : fileList) {
+            try {
+                processedCount++;
+                
+                // AI 분석 수행
+                if (fileInfo.getDetectedCategory() == null || fileInfo.getDetectedCategory().equals("Others")) {
+                    // 기본 분석이 되지 않은 파일에 대해 AI 분석 수행
+                    enhanceWithAI(fileInfo);
+                    System.out.println("[AI 분석] " + fileInfo.getFileName() + " → " + fileInfo.getDetectedCategory());
+                }
+                
+                // 진행률 콜백 호출
+                if (progressCallback != null) {
+                    progressCallback.onProgress(processedCount, totalFiles, fileInfo.getFileName());
+                }
+                
+                // AI API 호출 제한을 위한 지연
+                Thread.sleep(100);
+                
+            } catch (Exception e) {
+                System.err.println("[경고] AI 분석 실패: " + fileInfo.getFileName() + " - " + e.getMessage());
+            }
+        }
+        
+        System.out.println("[완료] AI 배치 분석 완료: " + processedCount + "/" + totalFiles + " 파일 처리");
+    }
+    
     /**
      * 리소스 정리
      */

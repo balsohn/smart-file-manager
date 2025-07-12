@@ -73,7 +73,6 @@ public class MainController implements Initializable {
     private TableConfigManager tableConfigManager;
     private FileOperationHandler fileOperationHandler;
     private DialogManager dialogManager;
-    private ThemeManager themeManager;
     
     // 데이터
     private ObservableList<FileInfo> fileList;
@@ -90,6 +89,9 @@ public class MainController implements Initializable {
         setupKeyboardShortcuts();
         setupListeners();
         updateUI();
+        
+        // 매니저 초기화 후 AI 상태 업데이트
+        updateAIStatusIndicator();
 
         System.out.println("[SUCCESS] MainController 초기화 완료");
     }
@@ -128,8 +130,6 @@ public class MainController implements Initializable {
             fileScanService, fileOrganizerService, undoService, duplicateDetectorService, cleanupDetectorService,
             fileAnalysisService, fileWatcherService, uiUpdateManager, dialogManager, this::getCurrentStage
         );
-        
-        themeManager = new ThemeManager();
     }
 
     private void initializeFileWatcher() {
@@ -141,10 +141,8 @@ public class MainController implements Initializable {
 
     private void initializeAIAnalysis() {
         AppConfig config = configService.getCurrentConfig();
-        if (config.isEnableAIAnalysis() && config.getAiApiKey() != null) {
-            fileAnalysisService.refreshConfig();
-            uiUpdateManager.updateAIStatusIndicator();
-        }
+        fileAnalysisService.refreshConfig();
+        // AI 상태 업데이트는 초기화 완료 후 수행
     }
 
     private void setupTable() {
@@ -378,7 +376,7 @@ public class MainController implements Initializable {
 
     @FXML
     private void handleThemeToggle() {
-        themeManager.toggleTheme(getCurrentStage().getScene(), uiUpdateManager);
+        ThemeManager.toggleTheme(getCurrentStage().getScene(), uiUpdateManager);
     }
 
     @FXML
@@ -388,6 +386,9 @@ public class MainController implements Initializable {
         } else {
             fileOperationHandler.startMonitoring();
         }
+        
+        // 모니터링 상태 즉시 업데이트
+        updateMonitoringStatus("");
     }
 
     @FXML
@@ -429,10 +430,15 @@ public class MainController implements Initializable {
             Stage ruleDialogStage = new Stage();
             String dialogTitle = existingRule != null ? "✏️ 파일 정리 규칙 수정" : "📝 파일 정리 규칙 추가";
             ruleDialogStage.setTitle(dialogTitle);
-            ruleDialogStage.setScene(new Scene(ruleDialogRoot, 600, 700));
+            Scene ruleDialogScene = new Scene(ruleDialogRoot, 600, 700);
+            ruleDialogStage.setScene(ruleDialogScene);
             ruleDialogStage.initModality(Modality.APPLICATION_MODAL);
             ruleDialogStage.initOwner(getCurrentStage());
             ruleDialogStage.setResizable(false);
+            
+            // 규칙 다이얼로그 Scene을 ThemeManager에 등록
+            ThemeManager.registerScene(ruleDialogScene);
+            ruleDialogStage.setOnHidden(event -> ThemeManager.unregisterScene(ruleDialogScene));
 
             // 다이얼로그 컨트롤러 설정
             ruleDialogController.setDialogStage(ruleDialogStage);
@@ -476,18 +482,28 @@ public class MainController implements Initializable {
 
             Stage settingsStage = new Stage();
             settingsStage.setTitle("⚙️ Smart File Manager - 설정");
-            settingsStage.setScene(new Scene(settingsRoot, 800, 600));
+            Scene settingsScene = new Scene(settingsRoot, 800, 600);
+            settingsStage.setScene(settingsScene);
             settingsStage.initModality(Modality.APPLICATION_MODAL);
             settingsStage.initOwner(getCurrentStage());
             settingsStage.setResizable(true);
             settingsStage.setMinWidth(700);
             settingsStage.setMinHeight(500);
 
+            // 설정창 Scene을 ThemeManager에 등록 (자동으로 현재 테마 적용됨)
+            ThemeManager.registerScene(settingsScene);
+            
+            // 설정창이 닫힐 때 Scene 등록 해제
+            settingsStage.setOnHidden(event -> ThemeManager.unregisterScene(settingsScene));
+
             if (settingsController != null) {
                 settingsController.setStage(settingsStage);
             }
 
             settingsStage.showAndWait();
+            
+            // 설정 변경 후 AI 상태 업데이트
+            updateAIStatusIndicator();
 
         } catch (IOException e) {
             dialogManager.showErrorDialog("설정 오류", "설정 창을 열 수 없습니다:\n" + e.getMessage());
@@ -506,9 +522,17 @@ public class MainController implements Initializable {
 
             Stage statisticsStage = new Stage();
             statisticsStage.setTitle("📊 파일 정리 통계");
-            statisticsStage.setScene(new Scene(statisticsRoot, 1200, 800));
+            Scene statisticsScene = new Scene(statisticsRoot, 1200, 800);
+            statisticsStage.setScene(statisticsScene);
             statisticsStage.initModality(Modality.APPLICATION_MODAL);
             statisticsStage.initOwner(getCurrentStage());
+            
+            // 통계창 Scene을 ThemeManager에 등록 (자동으로 현재 테마 적용됨)
+            ThemeManager.registerScene(statisticsScene);
+            
+            // 통계창이 닫힐 때 Scene 등록 해제
+            statisticsStage.setOnHidden(event -> ThemeManager.unregisterScene(statisticsScene));
+            
             statisticsStage.show();
 
         } catch (IOException e) {
@@ -526,7 +550,22 @@ public class MainController implements Initializable {
     }
 
     private void updateMonitoringStatus(String message) {
-        uiUpdateManager.updateMonitoringStatus(message, fileOperationHandler.isMonitoringActive());
+        if (fileOperationHandler == null || monitoringStatusLabel == null) {
+            return; // 아직 초기화되지 않음
+        }
+        
+        boolean isActive = fileOperationHandler.isMonitoringActive();
+        
+        if (uiUpdateManager != null) {
+            uiUpdateManager.updateMonitoringStatus(message, isActive);
+        }
+        
+        // 모니터링 상태 라벨의 CSS 클래스 업데이트
+        Platform.runLater(() -> {
+            monitoringStatusLabel.getStyleClass().removeAll("active", "inactive");
+            monitoringStatusLabel.getStyleClass().add(isActive ? "active" : "inactive");
+            monitoringStatusLabel.setText(isActive ? "모니터링 활성" : "모니터링 대기");
+        });
     }
 
     // ===============================
@@ -551,9 +590,32 @@ public class MainController implements Initializable {
 
     public void refreshAIConfiguration() {
         fileAnalysisService.refreshConfig();
-        uiUpdateManager.updateAIStatusIndicator();
+        updateAIStatusIndicator();
         tableConfigManager.refreshTable();
         uiUpdateManager.updateUI();
+    }
+    
+    /**
+     * AI 상태 표시기 업데이트 (CSS 클래스 포함)
+     */
+    private void updateAIStatusIndicator() {
+        if (configService == null || aiStatusIndicator == null) {
+            return; // 아직 초기화되지 않음
+        }
+        
+        AppConfig config = configService.getCurrentConfig();
+        boolean isActive = config.isEnableAIAnalysis() && config.getAiApiKey() != null && !config.getAiApiKey().trim().isEmpty();
+        
+        if (uiUpdateManager != null) {
+            uiUpdateManager.updateAIStatusIndicator();
+        }
+        
+        // AI 상태 라벨의 CSS 클래스 업데이트
+        Platform.runLater(() -> {
+            aiStatusIndicator.getStyleClass().removeAll("active", "inactive");
+            aiStatusIndicator.getStyleClass().add(isActive ? "active" : "inactive");
+            aiStatusIndicator.setText(isActive ? "AI 활성" : "AI 비활성");
+        });
     }
 
     // ===============================

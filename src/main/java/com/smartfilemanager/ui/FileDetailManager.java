@@ -101,4 +101,59 @@ public class FileDetailManager {
     public boolean isDetailsVisible() {
         return detailPanel.isVisible();
     }
+    
+    /**
+     * 파일 상세 정보 텍스트 생성 (외부에서 사용하기 위한 메서드)
+     */
+    public String generateDetailText(FileInfo fileInfo) {
+        if (fileInfo == null) {
+            return "파일을 선택하면 상세 정보가 표시됩니다.";
+        }
+
+        StringBuilder details = new StringBuilder();
+
+        // 기본 정보
+        details.append("[FILE] ").append(fileInfo.getFileName()).append("\n");
+
+        // 카테고리 정보 (서브카테고리 포함)
+        details.append("[CATEGORY] ").append(fileInfo.getDetectedCategory());
+        if (fileInfo.getDetectedSubCategory() != null && !fileInfo.getDetectedSubCategory().equals("General")) {
+            details.append(" → ").append(fileInfo.getDetectedSubCategory());
+        }
+        details.append("\n");
+
+        details.append("[SIZE] ").append(fileInfo.getFormattedFileSize()).append("\n");
+
+        // MIME 타입 정보
+        if (fileInfo.getMimeType() != null) {
+            details.append("[TYPE] ").append(fileInfo.getMimeType()).append("\n");
+        }
+
+        // 경로 정보 (짧게 표시)
+        String path = fileInfo.getFilePath();
+        if (path.length() > 45) {
+            path = "..." + path.substring(path.length() - 42);
+        }
+        details.append("[PATH] ").append(path).append("\n");
+
+        // 추출된 제목
+        if (fileInfo.getExtractedTitle() != null && !fileInfo.getExtractedTitle().isEmpty()) {
+            String title = fileInfo.getExtractedTitle();
+            if (title.length() > 30) {
+                title = title.substring(0, 27) + "...";
+            }
+            details.append("[TITLE] ").append(title).append("\n");
+        }
+
+        // 설명 (있다면)
+        if (fileInfo.getDescription() != null && !fileInfo.getDescription().isEmpty()) {
+            String desc = fileInfo.getDescription();
+            if (desc.length() > 50) {
+                desc = desc.substring(0, 47) + "...";
+            }
+            details.append("[DESC] ").append(desc);
+        }
+
+        return details.toString();
+    }
 }

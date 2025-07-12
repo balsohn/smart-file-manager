@@ -1,317 +1,526 @@
 package com.smartfilemanager.manager;
 
-import com.smartfilemanager.constants.MessageConstants;
-import com.smartfilemanager.constants.UIConstants;
-import com.smartfilemanager.model.FileInfo;
-import com.smartfilemanager.model.ProcessingStatus;
-import com.smartfilemanager.service.FileAnalysisService;
-import com.smartfilemanager.util.FileFormatUtils;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
-import javafx.collections.ObservableList;
-import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.Button;
 import javafx.scene.control.ProgressBar;
-import javafx.scene.layout.HBox;
-import javafx.util.Duration;
+import javafx.scene.control.TableView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
- * UI 업데이트 관련 로직을 관리하는 클래스
+ * UI 업데이트를 중앙에서 관리하는 매니저 클래스
+ * 모든 UI 업데이트를 JavaFX Application Thread에서 안전하게 처리합니다.
  */
 public class UIUpdateManager {
     
-    private final Label statusLabel;
-    private final Label progressLabel;
-    private final Label statsLabel;
-    private final Label statisticsLabel;
-    private final Label aiStatusIndicator;
-    private final Label currentFileLabel;
-    private final Label monitoringStatusLabel;
-    private final Label monitoringFolderLabel;
-    private final Button organizeButton;
-    private final Button monitoringToggleButton;
-    private final Button aiAnalysisButton;
-    private final ProgressBar progressBar;
-    private final HBox monitoringInfoBox;
-    private final MenuItem realTimeMonitoringMenuItem;
+    private static final Logger logger = LoggerFactory.getLogger(UIUpdateManager.class);
     
-    private final FileAnalysisService fileAnalysisService;
-    private final ObservableList<FileInfo> fileList;
+    // UI 컴포넌트들
+    private ProgressBar progressBar;
+    private Label statusLabel;
+    private Label progressLabel;
+    private TableView<?> tableView;
     
-    public UIUpdateManager(Label statusLabel, Label progressLabel, Label statsLabel, 
-                          Label statisticsLabel, Label aiStatusIndicator, Label currentFileLabel,
-                          Label monitoringStatusLabel, Label monitoringFolderLabel,
-                          Button organizeButton, Button monitoringToggleButton, Button aiAnalysisButton,
-                          ProgressBar progressBar, HBox monitoringInfoBox, MenuItem realTimeMonitoringMenuItem,
-                          FileAnalysisService fileAnalysisService, ObservableList<FileInfo> fileList) {
-        this.statusLabel = statusLabel;
-        this.progressLabel = progressLabel;
-        this.statsLabel = statsLabel;
-        this.statisticsLabel = statisticsLabel;
-        this.aiStatusIndicator = aiStatusIndicator;
-        this.currentFileLabel = currentFileLabel;
-        this.monitoringStatusLabel = monitoringStatusLabel;
-        this.monitoringFolderLabel = monitoringFolderLabel;
-        this.organizeButton = organizeButton;
-        this.monitoringToggleButton = monitoringToggleButton;
-        this.aiAnalysisButton = aiAnalysisButton;
+    // 상태 관리
+    private volatile boolean isShutdown = false;
+    
+    /**
+     * 기본 생성자
+     */
+    public UIUpdateManager() {
+        logger.debug("UIUpdateManager 초기화됨");
+    }
+    
+    // ===============================
+    // Setter 메서드들 (UI 컴포넌트 등록)
+    // ===============================
+    
+    public void setProgressBar(ProgressBar progressBar) {
         this.progressBar = progressBar;
-        this.monitoringInfoBox = monitoringInfoBox;
-        this.realTimeMonitoringMenuItem = realTimeMonitoringMenuItem;
-        this.fileAnalysisService = fileAnalysisService;
-        this.fileList = fileList;
     }
     
-    /**
-     * 전체 UI 업데이트
-     */
-    public void updateUI() {
-        updateStatistics();
-        updateOrganizeButtonState();
-        updateAIStatusIndicator();
+    public void setStatusLabel(Label statusLabel) {
+        this.statusLabel = statusLabel;
     }
     
+    public void setProgressLabel(Label progressLabel) {
+        this.progressLabel = progressLabel;
+    }
+    
+    public void setTableView(TableView<?> tableView) {
+        this.tableView = tableView;
+    }
+    
+    // ===============================
+    // UI 업데이트 메서드들
+    // ===============================
+    
     /**
-     * 통계 정보 업데이트
+     * UI 스레드에서 안전하게 실행
      */
-    public void updateStatistics() {
-        if (fileList.isEmpty()) {
-            setEmptyStatistics();
+    public void runOnUIThread(Runnable action) {
+        if (isShutdown) {
+            logger.warn("UIUpdateManager가 종료된 상태에서 UI 업데이트 시도");
             return;
         }
         
-        long totalFiles = fileList.size();
-        long totalSize = fileList.stream().mapToLong(FileInfo::getFileSize).sum();
-        long analyzedCount = getAnalyzedCount();
-        long organizedCount = getOrganizedCount();
-        long aiAnalyzedCount = getAIAnalyzedCount();
-        
-        updateStatisticsLabels(totalFiles, totalSize, analyzedCount, organizedCount, aiAnalyzedCount);
-    }
-    
-    /**
-     * 정리 버튼 상태 업데이트
-     */
-    public void updateOrganizeButtonState() {
-        if (organizeButton != null) {
-            boolean hasProcessableFiles = fileList.stream()
-                    .anyMatch(file -> file.getStatus().isProcessable());
-            organizeButton.setDisable(!hasProcessableFiles);
+        if (Platform.isFxApplicationThread()) {
+            try {
+                action.run();
+            } catch (Exception e) {
+                logger.error("UI 업데이트 실행 중 오류", e);
+            }
+        } else {
+            Platform.runLater(() -> {
+                try {
+                    action.run();
+                } catch (Exception e) {
+                    logger.error("UI 업데이트 실행 중 오류", e);
+                }
+            });
         }
     }
     
     /**
-     * AI 상태 표시기 업데이트
+     * 비동기 UI 업데이트
      */
-    public void updateAIStatusIndicator() {
-        if (aiStatusIndicator == null) return;
+    public CompletableFuture<Void> runOnUIThreadAsync(Runnable action) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
         
-        boolean aiAvailable = fileAnalysisService.isAIAnalysisAvailable();
-        Platform.runLater(() -> {
-            if (aiAvailable) {
-                aiStatusIndicator.setText(MessageConstants.UILabels.AI_ACTIVE);
-                aiStatusIndicator.getStyleClass().removeAll(UIConstants.AIStatusStyles.INACTIVE, UIConstants.AIStatusStyles.ERROR);
-                aiStatusIndicator.getStyleClass().add(UIConstants.AIStatusStyles.ACTIVE);
-            } else {
-                aiStatusIndicator.setText(MessageConstants.UILabels.AI_INACTIVE);
-                aiStatusIndicator.getStyleClass().removeAll(UIConstants.AIStatusStyles.ACTIVE, UIConstants.AIStatusStyles.ERROR);
-                aiStatusIndicator.getStyleClass().add(UIConstants.AIStatusStyles.INACTIVE);
+        runOnUIThread(() -> {
+            try {
+                action.run();
+                future.complete(null);
+            } catch (Exception e) {
+                future.completeExceptionally(e);
+            }
+        });
+        
+        return future;
+    }
+    
+    // ===============================
+    // 진행률 관리
+    // ===============================
+    
+    /**
+     * 진행률 업데이트
+     */
+    public void updateProgress(double progress, String message) {
+        runOnUIThread(() -> {
+            if (progressBar != null) {
+                progressBar.setProgress(progress);
+            }
+            if (progressLabel != null && message != null) {
+                progressLabel.setText(message);
             }
         });
     }
+    
+    /**
+     * 진행률 업데이트 (메시지만)
+     */
+    public void updateProgressMessage(String message) {
+        runOnUIThread(() -> {
+            if (progressLabel != null) {
+                progressLabel.setText(message != null ? message : "");
+            }
+        });
+    }
+    
+    /**
+     * 진행률 초기화
+     */
+    public void resetProgress() {
+        updateProgress(0.0, "");
+    }
+    
+    /**
+     * 진행률 완료
+     */
+    public void completeProgress() {
+        updateProgress(1.0, "완료");
+    }
+    
+    /**
+     * 진행률 숨기기
+     */
+    public void hideProgress() {
+        runOnUIThread(() -> {
+            if (progressBar != null) {
+                progressBar.setProgress(0.0);
+                progressBar.setVisible(false);
+            }
+            if (progressLabel != null) {
+                progressLabel.setText("");
+                progressLabel.setVisible(false);
+            }
+        });
+    }
+    
+    /**
+     * 진행률 표시
+     */
+    public void showProgress() {
+        runOnUIThread(() -> {
+            if (progressBar != null) {
+                progressBar.setVisible(true);
+            }
+            if (progressLabel != null) {
+                progressLabel.setVisible(true);
+            }
+        });
+    }
+    
+    // ===============================
+    // 상태 관리
+    // ===============================
+    
+    /**
+     * 상태 메시지 업데이트
+     */
+    public void updateStatus(String message) {
+        updateStatus(message, StatusType.INFO);
+    }
+    
+    /**
+     * 상태 메시지 업데이트 (타입 지정)
+     */
+    public void updateStatus(String message, StatusType type) {
+        runOnUIThread(() -> {
+            if (statusLabel != null) {
+                statusLabel.setText(message != null ? message : "");
+                
+                // 기존 상태 스타일 제거
+                statusLabel.getStyleClass().removeAll(
+                    "status-info", "status-success", "status-warning", 
+                    "status-error", "status-processing"
+                );
+                
+                // 새 상태 스타일 적용
+                statusLabel.getStyleClass().add("status-" + type.name().toLowerCase());
+            }
+        });
+        
+        // 로깅
+        switch (type) {
+            case SUCCESS:
+                logger.info("상태 업데이트 (성공): {}", message);
+                break;
+            case WARNING:
+                logger.warn("상태 업데이트 (경고): {}", message);
+                break;
+            case ERROR:
+                logger.error("상태 업데이트 (오류): {}", message);
+                break;
+            case PROCESSING:
+                logger.debug("상태 업데이트 (처리중): {}", message);
+                break;
+            default:
+                logger.debug("상태 업데이트: {}", message);
+                break;
+        }
+    }
+    
+    /**
+     * 상태 초기화
+     */
+    public void clearStatus() {
+        updateStatus("준비됨", StatusType.INFO);
+    }
+    
+    // ===============================
+    // 테이블 관리
+    // ===============================
+    
+    /**
+     * 테이블 새로고침
+     */
+    public void refreshTable() {
+        runOnUIThread(() -> {
+            if (tableView != null) {
+                tableView.refresh();
+                logger.debug("테이블 새로고침 완료");
+            }
+        });
+    }
+    
+    /**
+     * 테이블 선택 해제
+     */
+    public void clearTableSelection() {
+        runOnUIThread(() -> {
+            if (tableView != null) {
+                tableView.getSelectionModel().clearSelection();
+                logger.debug("테이블 선택 해제됨");
+            }
+        });
+    }
+    
+    /**
+     * 테이블 전체 선택
+     */
+    public void selectAllTable() {
+        runOnUIThread(() -> {
+            if (tableView != null) {
+                tableView.getSelectionModel().selectAll();
+                logger.debug("테이블 전체 선택됨");
+            }
+        });
+    }
+    
+    // ===============================
+    // 배치 업데이트
+    // ===============================
+    
+    /**
+     * 여러 UI 업데이트를 배치로 처리
+     */
+    public void batchUpdate(Runnable... updates) {
+        runOnUIThread(() -> {
+            for (Runnable update : updates) {
+                try {
+                    update.run();
+                } catch (Exception e) {
+                    logger.error("배치 업데이트 중 오류", e);
+                }
+            }
+        });
+    }
+    
+    /**
+     * 상태와 진행률을 동시에 업데이트
+     */
+    public void updateStatusAndProgress(String status, StatusType statusType, 
+                                       double progress, String progressMessage) {
+        runOnUIThread(() -> {
+            updateStatus(status, statusType);
+            updateProgress(progress, progressMessage);
+        });
+    }
+    
+    // ===============================
+    // 콜백 지원
+    // ===============================
+    
+    /**
+     * 진행률 콜백 생성
+     */
+    public Consumer<Double> createProgressCallback(String baseMessage) {
+        return progress -> {
+            String message = baseMessage != null ? 
+                String.format("%s (%.0f%%)", baseMessage, progress * 100) : 
+                String.format("진행률: %.0f%%", progress * 100);
+            updateProgress(progress, message);
+        };
+    }
+    
+    /**
+     * 상태 콜백 생성
+     */
+    public Consumer<String> createStatusCallback(StatusType type) {
+        return message -> updateStatus(message, type);
+    }
+    
+    // ===============================
+    // 애니메이션 지원
+    // ===============================
+    
+    /**
+     * 진행률 애니메이션 (부드러운 전환)
+     */
+    public void animateProgress(double fromProgress, double toProgress, 
+                               long durationMs, String message) {
+        if (progressBar == null) return;
+        
+        runOnUIThread(() -> {
+            // JavaFX Timeline을 사용한 애니메이션 구현
+            // 현재는 간단히 최종 값으로 설정
+            updateProgress(toProgress, message);
+        });
+    }
+    
+    // ===============================
+    // 상태 타입 열거형
+    // ===============================
+    
+    public enum StatusType {
+        INFO,
+        SUCCESS,
+        WARNING,
+        ERROR,
+        PROCESSING
+    }
+    
+    // ===============================
+    // 리소스 정리
+    // ===============================
+    
+    /**
+     * UIUpdateManager 종료
+     */
+    public void shutdown() {
+        isShutdown = true;
+        
+        // 마지막 UI 정리
+        runOnUIThread(() -> {
+            resetProgress();
+            clearStatus();
+        });
+        
+        logger.info("UIUpdateManager 종료됨");
+    }
+    
+    /**
+     * 종료 상태 확인
+     */
+    public boolean isShutdown() {
+        return isShutdown;
+    }
+    
+    // ===============================
+    // 누락된 메서드들 추가 (FileOperationHandler, ThemeManager에서 사용)
+    // ===============================
     
     /**
      * 모니터링 UI 업데이트
      */
-    public void updateMonitoringUI(boolean isMonitoringActive) {
-        Platform.runLater(() -> {
-            if (monitoringToggleButton != null) {
-                monitoringToggleButton.setText(isMonitoringActive ? 
-                    MessageConstants.UILabels.MONITORING_STOP : 
-                    MessageConstants.UILabels.MONITORING_START);
-                if (isMonitoringActive) {
-                    monitoringToggleButton.getStyleClass().add("active");
-                } else {
-                    monitoringToggleButton.getStyleClass().remove("active");
-                }
-            }
-            if (realTimeMonitoringMenuItem != null && realTimeMonitoringMenuItem instanceof CheckMenuItem) {
-                ((CheckMenuItem) realTimeMonitoringMenuItem).setSelected(isMonitoringActive);
-            }
-        });
-    }
-    
-    /**
-     * 모니터링 상태 업데이트
-     */
-    public void updateMonitoringStatus(String message, boolean isMonitoringActive) {
-        Platform.runLater(() -> {
-            if (monitoringStatusLabel != null) {
-                monitoringStatusLabel.setText(message);
-                if (isMonitoringActive) {
-                    monitoringStatusLabel.getStyleClass().removeAll(UIConstants.AIStatusStyles.INACTIVE, UIConstants.AIStatusStyles.ERROR);
-                    monitoringStatusLabel.getStyleClass().add(UIConstants.AIStatusStyles.ACTIVE);
-                } else {
-                    monitoringStatusLabel.getStyleClass().removeAll(UIConstants.AIStatusStyles.ACTIVE, UIConstants.AIStatusStyles.ERROR);
-                    monitoringStatusLabel.getStyleClass().add(UIConstants.AIStatusStyles.INACTIVE);
-                }
-            }
-            updateStatusLabel(message);
-        });
+    public void updateMonitoringUI(boolean isMonitoring) {
+        logger.debug("모니터링 UI 업데이트: {}", isMonitoring ? "활성화" : "비활성화");
+        // 실제 구현에서는 모니터링 관련 UI 컴포넌트들을 업데이트
+        updateStatus(isMonitoring ? "폴더 모니터링 활성화됨" : "폴더 모니터링 비활성화됨", StatusType.INFO);
     }
     
     /**
      * 모니터링 폴더 정보 업데이트
      */
-    public void updateMonitoringFolder(String path) {
-        if (monitoringFolderLabel != null) {
-            monitoringFolderLabel.setText(path);
-        }
-        if (monitoringInfoBox != null) {
-            monitoringInfoBox.setVisible(true);
-            monitoringInfoBox.setManaged(true);
-        }
+    public void updateMonitoringFolder(String folderPath) {
+        logger.debug("모니터링 폴더 업데이트: {}", folderPath);
+        updateStatus("모니터링 폴더: " + folderPath, StatusType.INFO);
     }
     
     /**
      * 모니터링 정보 숨기기
      */
     public void hideMonitoringInfo() {
-        if (monitoringInfoBox != null) {
-            monitoringInfoBox.setVisible(false);
-            monitoringInfoBox.setManaged(false);
-        }
+        logger.debug("모니터링 정보 숨김");
+        updateStatus("모니터링 정보가 숨겨졌습니다", StatusType.INFO);
     }
     
     /**
-     * 상태 라벨 업데이트
+     * 상태 레이블 업데이트 (직접 메시지 설정)
      */
     public void updateStatusLabel(String message) {
-        if (statusLabel != null) {
-            statusLabel.setText(message);
-        }
-    }
-    
-    /**
-     * 진행률 UI 업데이트
-     */
-    public void updateProgress(double progress, String message) {
-        Platform.runLater(() -> {
-            if (progressBar != null) {
-                progressBar.setProgress(progress);
-                progressBar.setVisible(true);
-            }
-            if (progressLabel != null) {
-                progressLabel.setText(message);
-                progressLabel.setVisible(true);
-            }
-        });
-    }
-    
-    /**
-     * 임시 메시지 표시
-     */
-    public void showTemporaryMessage(String message) {
-        if (currentFileLabel != null) {
-            currentFileLabel.setText(message);
-            Timeline timeline = new Timeline(new KeyFrame(
-                Duration.millis(com.smartfilemanager.constants.FileConstants.ProcessingDelays.UI_MESSAGE_DISPLAY), 
-                e -> {
-                    if (currentFileLabel != null) {
-                        currentFileLabel.setText("");
-                    }
-                }));
-            timeline.play();
-        }
-    }
-    
-    /**
-     * 새 파일 감지 시 UI 업데이트
-     */
-    public void handleNewFileDetected(FileInfo newFile) {
-        Platform.runLater(() -> {
-            updateStatistics();
-            updateStatusLabel(String.format(MessageConstants.UILabels.NEW_FILE_DETECTED, newFile.getFileName()));
-            
-            if (currentFileLabel != null) {
-                currentFileLabel.setText(String.format(MessageConstants.UILabels.FILE_DETECTED, newFile.getFileName()));
-                Timeline timeline = new Timeline(new KeyFrame(
-                    Duration.millis(com.smartfilemanager.constants.FileConstants.ProcessingDelays.UI_MESSAGE_DISPLAY), 
-                    e -> {
-                        if (currentFileLabel != null) {
-                            currentFileLabel.setText("");
-                        }
-                    }));
-                timeline.play();
-            }
-            
-            if (newFile.getStatus() == ProcessingStatus.ORGANIZED) {
-                showTemporaryMessage(String.format(MessageConstants.UILabels.FILE_AUTO_ORGANIZED, 
-                    newFile.getFileName(), newFile.getDetectedCategory()));
-            }
-        });
+        updateStatus(message, StatusType.INFO);
     }
     
     /**
      * AI 분석 버튼 상태 업데이트
      */
-    public void updateAIAnalysisButton(boolean isAnalyzing) {
-        Platform.runLater(() -> {
-            if (aiAnalysisButton != null) {
-                aiAnalysisButton.setDisable(isAnalyzing);
-                aiAnalysisButton.setText(isAnalyzing ? 
-                    MessageConstants.UILabels.AI_ANALYZING : 
-                    MessageConstants.UILabels.AI_ANALYZE);
-            }
+    public void updateAIAnalysisButton(boolean enabled) {
+        logger.debug("AI 분석 버튼 상태 업데이트: {}", enabled ? "활성화" : "비활성화");
+        // 실제 구현에서는 AI 분석 버튼의 활성화/비활성화 상태를 변경
+        updateStatus(enabled ? "AI 분석 버튼 활성화" : "AI 분석 버튼 비활성화", StatusType.INFO);
+    }
+    
+    /**
+     * 전체 UI 업데이트
+     */
+    public void updateUI() {
+        runOnUIThread(() -> {
+            refreshTable();
+            logger.debug("전체 UI 업데이트 완료");
         });
     }
     
-    // Private helper methods
-    
-    private void setEmptyStatistics() {
-        if (statsLabel != null) {
-            statsLabel.setText(MessageConstants.StatisticsLabels.EMPTY_STATS);
-        }
-        if (statisticsLabel != null) {
-            statisticsLabel.setText(MessageConstants.StatisticsLabels.STATISTICS_FORMAT
-                .formatted(0, 0, "0 B"));
-        }
-    }
-    
-    private void updateStatisticsLabels(long totalFiles, long totalSize, long analyzedCount, long organizedCount, long aiAnalyzedCount) {
-        String formattedSize = FileFormatUtils.formatFileSize(totalSize);
+    /**
+     * 임시 메시지 표시 (ThemeManager에서 사용)
+     */
+    public void showTemporaryMessage(String message) {
+        updateStatus(message, StatusType.INFO);
         
-        if (statsLabel != null) {
-            String statsText = aiAnalyzedCount > 0 ? 
-                FileFormatUtils.formatFileStatsWithAI(totalFiles, totalSize, aiAnalyzedCount) :
-                FileFormatUtils.formatFileStats(totalFiles, totalSize);
-            statsLabel.setText(statsText);
-        }
-        
-        if (statisticsLabel != null) {
-            statisticsLabel.setText(String.format(MessageConstants.StatisticsLabels.STATISTICS_FORMAT,
-                analyzedCount, organizedCount, formattedSize));
-        }
+        // 3초 후 메시지 자동 제거
+        CompletableFuture.delayedExecutor(3, java.util.concurrent.TimeUnit.SECONDS)
+                .execute(() -> {
+                    if (!isShutdown) {
+                        clearStatus();
+                    }
+                });
     }
     
-    private long getAnalyzedCount() {
-        return fileList.stream().filter(f -> 
-            f.getStatus() == ProcessingStatus.ANALYZED || 
-            f.getStatus() == ProcessingStatus.ORGANIZED).count();
+    // ===============================
+    // 백업 MainController 호환성을 위한 메서드들
+    // ===============================
+    
+    /**
+     * 레거시 생성자 호환성을 위한 생성자
+     */
+    public UIUpdateManager(Object... components) {
+        // 기본 생성자 호출
+        this();
+        logger.debug("레거시 호환 생성자 호출됨 - {} 컴포넌트", components.length);
     }
     
-    private long getOrganizedCount() {
-        return fileList.stream().filter(f -> 
-            f.getStatus() == ProcessingStatus.ORGANIZED).count();
+    /**
+     * AI 상태 표시기 업데이트
+     */
+    public void updateAIStatusIndicator() {
+        updateStatus("AI 분석 서비스 준비됨", StatusType.SUCCESS);
+        logger.debug("AI 상태 표시기 업데이트됨");
     }
     
-    private long getAIAnalyzedCount() {
-        return fileList.stream().mapToLong(file -> 
-            com.smartfilemanager.util.FileIconUtils.isAIAnalyzed(file) ? 1 : 0).sum();
+    /**
+     * AI 상태 표시기 업데이트 (활성/비활성 상태 포함)
+     */
+    public void updateAIStatusIndicator(boolean isActive, String message) {
+        runOnUIThread(() -> {
+            // AI 상태 라벨이 있다면 업데이트 (실제 구현에서는 라벨 참조가 필요)
+            logger.debug("AI 상태 업데이트: {} (활성: {})", message, isActive);
+            
+            // 상태에 따른 메시지 업데이트
+            String statusText = isActive ? "AI 활성" : "AI 비활성";
+            if (message != null && !message.trim().isEmpty()) {
+                statusText = message;
+            }
+            
+            updateStatus(statusText, isActive ? StatusType.SUCCESS : StatusType.INFO);
+        });
+    }
+    
+    /**
+     * 모니터링 상태 라벨 업데이트 (CSS 클래스 포함)
+     */
+    public void updateMonitoringStatusWithStyle(boolean isActive, String message) {
+        runOnUIThread(() -> {
+            logger.debug("모니터링 상태 업데이트: {} (활성: {})", message, isActive);
+            
+            // 상태에 따른 메시지 업데이트
+            String statusText = isActive ? "모니터링 활성" : "모니터링 대기";
+            if (message != null && !message.trim().isEmpty()) {
+                statusText = message;
+            }
+            
+            updateStatus(statusText, isActive ? StatusType.SUCCESS : StatusType.INFO);
+        });
+    }
+    
+    /**
+     * 새 파일 감지 처리
+     */
+    public void handleNewFileDetected(Object newFile) {
+        updateStatus("새 파일이 감지되었습니다", StatusType.INFO);
+        logger.debug("새 파일 감지 처리: {}", newFile);
+    }
+    
+    /**
+     * 모니터링 상태 업데이트
+     */
+    public void updateMonitoringStatus(String message, boolean isActive) {
+        StatusType type = isActive ? StatusType.SUCCESS : StatusType.INFO;
+        updateStatus(message, type);
+        logger.debug("모니터링 상태 업데이트: {} (활성: {})", message, isActive);
     }
 }

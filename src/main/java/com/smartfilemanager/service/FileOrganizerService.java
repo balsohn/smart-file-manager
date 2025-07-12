@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -20,14 +21,30 @@ import java.util.List;
  */
 public class FileOrganizerService {
 
+    // 콜백 인터페이스
+    @FunctionalInterface
+    public interface ProgressCallback {
+        void onProgress(int current, int total, String currentFile);
+    }
+
     private ProgressBar progressBar;
     private Label statusLabel;
     private Label progressLabel;
+    
+    // 콜백 필드
+    private ProgressCallback progressCallback;
 
     public FileOrganizerService(ProgressBar progressBar, Label statusLabel, Label progressLabel) {
         this.progressBar = progressBar;
         this.statusLabel = statusLabel;
         this.progressLabel = progressLabel;
+    }
+    
+    /**
+     * 진행률 콜백 설정
+     */
+    public void setProgressCallback(ProgressCallback progressCallback) {
+        this.progressCallback = progressCallback;
     }
 
     /**
@@ -263,5 +280,60 @@ public class FileOrganizerService {
 
         System.err.println("[오류] 파일 정리 실패: " + error.getMessage());
         error.printStackTrace();
+    }
+    
+    /**
+     * 동기식 파일 정리 메서드 (FileOperationController에서 사용)
+     */
+    public List<FileInfo> organizeFiles(javafx.collections.ObservableList<FileInfo> fileList) throws Exception {
+        List<FileInfo> filesToOrganize = new ArrayList<>(fileList);
+        List<FileInfo> organizedFiles = new ArrayList<>();
+        
+        System.out.println("[정보] 동기식 파일 정리 시작: " + filesToOrganize.size() + "개 파일");
+        
+        // 기본 정리 폴더 설정
+        String targetRootPath = System.getProperty("user.home") + "/OrganizedFiles";
+        
+        for (int i = 0; i < filesToOrganize.size(); i++) {
+            FileInfo fileInfo = filesToOrganize.get(i);
+            
+            try {
+                // 상태를 정리 중으로 변경
+                fileInfo.setStatus(ProcessingStatus.ORGANIZING);
+                
+                // 단일 파일 정리
+                organizeFile(fileInfo, targetRootPath);
+                
+                // 상태를 정리 완료로 변경
+                fileInfo.setStatus(ProcessingStatus.ORGANIZED);
+                fileInfo.setProcessedAt(LocalDateTime.now());
+                
+                organizedFiles.add(fileInfo);
+                
+                // 진행률 콜백 호출
+                if (progressCallback != null) {
+                    progressCallback.onProgress(i + 1, filesToOrganize.size(), fileInfo.getFileName());
+                }
+                
+                System.out.println("[성공] 정리 완료: " + fileInfo.getFileName() + " -> " + fileInfo.getSuggestedPath());
+                
+            } catch (Exception e) {
+                // 상태를 실패로 변경
+                fileInfo.setStatus(ProcessingStatus.FAILED);
+                fileInfo.setErrorMessage(e.getMessage());
+                
+                System.err.println("[오류] 정리 실패: " + fileInfo.getFileName() + " - " + e.getMessage());
+            }
+        }
+        
+        System.out.println("[완료] " + organizedFiles.size() + "/" + filesToOrganize.size() + " 파일 정리 완료");
+        return organizedFiles;
+    }
+    
+    /**
+     * 서비스 종료
+     */
+    public void shutdown() {
+        System.out.println("[정보] FileOrganizerService 종료됨");
     }
 }

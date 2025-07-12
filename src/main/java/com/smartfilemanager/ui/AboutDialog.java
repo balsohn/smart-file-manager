@@ -31,25 +31,26 @@ public class AboutDialog {
 
         // 애플리케이션 아이콘/제목
         Label titleLabel = new Label("🗂️ Smart File Manager");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
-        titleLabel.setStyle("-fx-text-fill: #2c3e50;");
+        titleLabel.setFont(Font.font("Segoe UI Emoji", FontWeight.BOLD, 26));
+        titleLabel.getStyleClass().add("about-title");
 
         // 버전 정보
         Label versionLabel = new Label("버전 1.0.0");
-        versionLabel.setFont(Font.font("System", FontWeight.NORMAL, 14));
-        versionLabel.setStyle("-fx-text-fill: #6c757d;");
+        versionLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 16));
+        versionLabel.getStyleClass().add("about-version");
 
         // 설명
         Label descriptionLabel = new Label("AI 기반 스마트 파일 정리 도구");
-        descriptionLabel.setFont(Font.font("System", FontWeight.NORMAL, 16));
-        descriptionLabel.setStyle("-fx-text-fill: #495057;");
+        descriptionLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 18));
+        descriptionLabel.getStyleClass().add("about-description");
 
         // 기능 목록
         VBox featuresBox = new VBox(5);
         featuresBox.setAlignment(Pos.CENTER_LEFT);
 
         Label featuresTitle = new Label("✨ 주요 기능:");
-        featuresTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
+        featuresTitle.setFont(Font.font("Segoe UI Emoji", FontWeight.BOLD, 16));
+        featuresTitle.getStyleClass().add("about-section-title");
 
         String[] features = {
                 "📁 스마트 파일 분류 및 정리",
@@ -63,8 +64,8 @@ public class AboutDialog {
         featuresBox.getChildren().add(featuresTitle);
         for (String feature : features) {
             Label featureLabel = new Label(feature);
-            featureLabel.setFont(Font.font("System", 12));
-            featureLabel.setStyle("-fx-text-fill: #495057;");
+            featureLabel.setFont(Font.font("Segoe UI Emoji", 14));
+            featureLabel.getStyleClass().add("about-feature");
             featuresBox.getChildren().add(featureLabel);
         }
 
@@ -73,11 +74,12 @@ public class AboutDialog {
         techBox.setAlignment(Pos.CENTER_LEFT);
 
         Label techTitle = new Label("🛠️ 기술 스택:");
-        techTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
+        techTitle.setFont(Font.font("Segoe UI Emoji", FontWeight.BOLD, 16));
+        techTitle.getStyleClass().add("about-section-title");
 
-        Label techLabel = new Label("• JavaFX 21.0.2 + Lombok + SQLite + Gson");
-        techLabel.setFont(Font.font("System", 12));
-        techLabel.setStyle("-fx-text-fill: #495057;");
+        Label techLabel = new Label("• JavaFX 17.0.2 + Lombok + SQLite + Gson");
+        techLabel.setFont(Font.font("Segoe UI", 14));
+        techLabel.getStyleClass().add("about-tech");
 
         techBox.getChildren().addAll(techTitle, techLabel);
 
@@ -86,23 +88,23 @@ public class AboutDialog {
         developerBox.setAlignment(Pos.CENTER);
 
         Label developerLabel = new Label("개발: Smart File Manager Team");
-        developerLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
-        developerLabel.setStyle("-fx-text-fill: #6c757d;");
+        developerLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
+        developerLabel.getStyleClass().add("about-developer");
 
         Label copyrightLabel = new Label("© 2024 All rights reserved");
-        copyrightLabel.setFont(Font.font("System", FontWeight.NORMAL, 11));
-        copyrightLabel.setStyle("-fx-text-fill: #adb5bd;");
+        copyrightLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 12));
+        copyrightLabel.getStyleClass().add("about-copyright");
 
         developerBox.getChildren().addAll(developerLabel, copyrightLabel);
 
-        // GitHub 링크 (선택사항)
+        // GitHub 링크
         Hyperlink githubLink = new Hyperlink("🔗 GitHub에서 소스코드 보기");
-        githubLink.setFont(Font.font("System", 12));
+        githubLink.setFont(Font.font("Segoe UI Emoji", 14));
+        githubLink.getStyleClass().add("about-github-link");
         githubLink.setOnAction(e -> {
-            // 실제 GitHub URL로 변경 필요
             try {
                 java.awt.Desktop.getDesktop().browse(
-                        java.net.URI.create("https://github.com/your-username/smart-file-manager"));
+                        java.net.URI.create("https://github.com/balsohn/smart-file-manager"));
             } catch (Exception ex) {
                 System.out.println("브라우저를 열 수 없습니다: " + ex.getMessage());
             }
@@ -113,7 +115,8 @@ public class AboutDialog {
         systemBox.setAlignment(Pos.CENTER_LEFT);
 
         Label systemTitle = new Label("💻 시스템 정보:");
-        systemTitle.setFont(Font.font("System", FontWeight.BOLD, 12));
+        systemTitle.setFont(Font.font("Segoe UI Emoji", FontWeight.BOLD, 14));
+        systemTitle.getStyleClass().add("about-section-title");
 
         String javaVersion = System.getProperty("java.version");
         String osName = System.getProperty("os.name");
@@ -122,17 +125,17 @@ public class AboutDialog {
         Label javaLabel = new Label("Java: " + javaVersion);
         Label osLabel = new Label("OS: " + osName + " " + osVersion);
 
-        javaLabel.setFont(Font.font("System", 10));
-        osLabel.setFont(Font.font("System", 10));
-        javaLabel.setStyle("-fx-text-fill: #6c757d;");
-        osLabel.setStyle("-fx-text-fill: #6c757d;");
+        javaLabel.setFont(Font.font("Segoe UI", 12));
+        osLabel.setFont(Font.font("Segoe UI", 12));
+        javaLabel.getStyleClass().add("about-system-info");
+        osLabel.getStyleClass().add("about-system-info");
 
         systemBox.getChildren().addAll(systemTitle, javaLabel, osLabel);
 
         // 닫기 버튼
         Button closeButton = new Button("확인");
         closeButton.setPrefWidth(100);
-        closeButton.setStyle("-fx-background-color: #007bff; -fx-text-fill: white; -fx-background-radius: 5px;");
+        closeButton.getStyleClass().add("about-close-button");
         closeButton.setOnAction(e -> aboutStage.close());
 
         // 레이아웃 구성
@@ -156,6 +159,13 @@ public class AboutDialog {
 
         Scene scene = new Scene(content, 450, 650);
         aboutStage.setScene(scene);
+        
+        // About 창 Scene을 ThemeManager에 등록 (자동으로 현재 테마 적용됨)
+        ThemeManager.registerScene(scene);
+        
+        // About 창이 닫힐 때 Scene 등록 해제
+        aboutStage.setOnHidden(event -> ThemeManager.unregisterScene(scene));
+        
         aboutStage.showAndWait();
     }
 }

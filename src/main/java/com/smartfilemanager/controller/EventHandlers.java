@@ -160,12 +160,19 @@ public class EventHandlers {
 
             Stage settingsStage = new Stage();
             settingsStage.setTitle("⚙️ Smart File Manager - 설정");
-            settingsStage.setScene(new Scene(settingsRoot, 800, 600));
+            Scene settingsScene = new Scene(settingsRoot, 800, 600);
+            settingsStage.setScene(settingsScene);
             settingsStage.initModality(Modality.APPLICATION_MODAL);
             settingsStage.initOwner(primaryStage);
             settingsStage.setResizable(true);
             settingsStage.setMinWidth(700);
             settingsStage.setMinHeight(500);
+
+            // 설정창 Scene을 ThemeManager에 등록 (자동으로 현재 테마 적용됨)
+            com.smartfilemanager.ui.ThemeManager.registerScene(settingsScene);
+            
+            // 설정창이 닫힐 때 Scene 등록 해제
+            settingsStage.setOnHidden(event -> com.smartfilemanager.ui.ThemeManager.unregisterScene(settingsScene));
 
             settingsController.setStage(settingsStage);
             settingsStage.showAndWait();

@@ -280,4 +280,47 @@ public class FileInfo {
                 errorMessage != null &&
                 !errorMessage.trim().isEmpty();
     }
+    
+    // ===============================
+    // 누락된 메서드들 추가
+    // ===============================
+    
+    /**
+     * getSize() 메서드 (FileOperationController에서 사용)
+     * fileSize 필드와 동일한 값 반환
+     */
+    public long getSize() {
+        return fileSize;
+    }
+    
+    /**
+     * setSize() 메서드 (StatusController에서 사용)
+     */
+    public void setSize(long size) {
+        this.fileSize = size;
+    }
+    
+    /**
+     * getName() 메서드 (MainController에서 사용)
+     * fileName 필드와 동일한 값 반환
+     */
+    public String getName() {
+        return fileName;
+    }
+    
+    /**
+     * getPath() 메서드 (StatusController에서 사용)
+     * filePath 필드와 동일한 값 반환
+     */
+    public String getPath() {
+        return filePath;
+    }
+    
+    /**
+     * isOrganized() 메서드 (FileOperationController에서 사용)
+     * 파일이 정리된 상태인지 확인
+     */
+    public boolean isOrganized() {
+        return status == ProcessingStatus.ORGANIZED;
+    }
 }

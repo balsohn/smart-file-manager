@@ -19,11 +19,20 @@ import java.util.List;
  */
 public class FileScanService {
 
+    // 콜백 인터페이스
+    @FunctionalInterface
+    public interface ProgressCallback {
+        void onProgress(int current, int total, String currentFile);
+    }
+
     private ProgressBar progressBar;
     private Label statusLabel;
     private Label progressLabel;
     private ObservableList<FileInfo> fileList;
     private FileAnalysisService analysisService;
+    
+    // 콜백 필드
+    private ProgressCallback progressCallback;
 
     public FileScanService(ProgressBar progressBar, Label statusLabel, Label progressLabel, ObservableList<FileInfo> fileList) {
         this.progressBar = progressBar;
@@ -31,6 +40,13 @@ public class FileScanService {
         this.progressLabel = progressLabel;
         this.fileList = fileList;
         this.analysisService = new FileAnalysisService();
+    }
+    
+    /**
+     * 진행률 콜백 설정
+     */
+    public void setProgressCallback(ProgressCallback progressCallback) {
+        this.progressCallback = progressCallback;
     }
 
     /**
@@ -68,6 +84,11 @@ public class FileScanService {
                             processedFiles++;
                             final int currentProgress = processedFiles;
 
+                            // 콜백 호출
+                            if (progressCallback != null) {
+                                progressCallback.onProgress(currentProgress, totalFiles, file.getName());
+                            }
+                            
                             // UI 업데이트 (JavaFX Application Thread에서 실행)
                             Platform.runLater(() -> {
                                 double progress = (double) currentProgress / totalFiles;
@@ -211,5 +232,58 @@ public class FileScanService {
 
         System.err.println("[오류] 스캔 실패: " + error.getMessage());
         error.printStackTrace();
+    }
+    
+    /**
+     * 동기식 파일 스캔 메서드 (FileOperationController에서 사용)
+     */
+    public List<FileInfo> scanFiles(java.nio.file.Path directory) throws Exception {
+        System.out.println("[정보] 동기식 파일 스캔 시작: " + directory);
+        
+        List<FileInfo> scannedFiles = new ArrayList<>();
+        
+        try (java.util.stream.Stream<java.nio.file.Path> paths = java.nio.file.Files.walk(directory)) {
+            List<java.nio.file.Path> filePaths = paths
+                .filter(java.nio.file.Files::isRegularFile)
+                .collect(java.util.stream.Collectors.toList());
+            
+            int totalFiles = filePaths.size();
+            int current = 0;
+            
+            for (java.nio.file.Path filePath : filePaths) {
+                current++;
+                
+                try {
+                    // FileInfo 객체 생성
+                    FileInfo fileInfo = analysisService.analyzeFile(filePath.toString());
+                    scannedFiles.add(fileInfo);
+                    
+                    // 진행률 콜백 호출
+                    if (progressCallback != null) {
+                        progressCallback.onProgress(current, totalFiles, filePath.getFileName().toString());
+                    }
+                    
+                } catch (Exception e) {
+                    System.err.println("[경고] 파일 분석 실패: " + filePath + " - " + e.getMessage());
+                }
+            }
+            
+            System.out.println("[성공] " + scannedFiles.size() + "개 파일 스캔 완료");
+            return scannedFiles;
+            
+        } catch (Exception e) {
+            System.err.println("[오류] 파일 스캔 실패: " + e.getMessage());
+            throw e;
+        }
+    }
+    
+    /**
+     * 서비스 종료
+     */
+    public void shutdown() {
+        if (analysisService != null) {
+            // FileAnalysisService 종료 로직이 있다면 호출
+        }
+        System.out.println("[정보] FileScanService 종료됨");
     }
 }

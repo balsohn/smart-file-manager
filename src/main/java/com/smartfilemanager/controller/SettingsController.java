@@ -196,7 +196,12 @@ public class SettingsController implements Initializable {
         themeComboBox.getItems().addAll(
                 "밝은 테마",
                 "어두운 테마",
-                "시스템 설정 따르기"
+                "파란 테마",
+                "초록 테마",
+                "보라 테마",
+                "주황 테마",
+                "청록 테마",
+                "고대비 테마"
         );
         themeComboBox.setValue("밝은 테마");
     }
@@ -378,7 +383,8 @@ public class SettingsController implements Initializable {
 
         // UI 설정
         loadLanguageToComboBox(config.getLanguage());
-        loadThemeToComboBox(config.getTheme());
+        // ThemeManager에서 현재 적용된 테마 로드 (메인 메뉴에서 변경된 테마 반영)
+        loadThemeToComboBox(com.smartfilemanager.ui.ThemeManager.getCurrentThemeId());
         minimizeToTrayCheckBox.setSelected(config.isMinimizeToTray());
         debugModeCheckBox.setSelected(config.isDebugMode());
 
@@ -822,7 +828,7 @@ public class SettingsController implements Initializable {
     private void handleThemeChange() {
         String selectedTheme = themeComboBox.getValue();
         if (selectedTheme != null) {
-            String themeId = selectedTheme.toLowerCase().contains("dark") ? "dark" : "light";
+            String themeId = getThemeIdFromDisplayName(selectedTheme);
 
             try {
                 ThemeManager.applyThemeById(themeId);
@@ -833,6 +839,23 @@ public class SettingsController implements Initializable {
                 String currentThemeId = ThemeManager.getCurrentThemeId();
                 loadThemeToComboBox(currentThemeId);
             }
+        }
+    }
+
+    /**
+     * 테마 표시명을 테마 ID로 변환
+     */
+    private String getThemeIdFromDisplayName(String displayName) {
+        switch (displayName) {
+            case "밝은 테마": return "light";
+            case "어두운 테마": return "dark";
+            case "파란 테마": return "blue";
+            case "초록 테마": return "green";
+            case "보라 테마": return "purple";
+            case "주황 테마": return "orange";
+            case "청록 테마": return "teal";
+            case "고대비 테마": return "high-contrast";
+            default: return "light";
         }
     }
 
@@ -849,10 +872,24 @@ public class SettingsController implements Initializable {
     private void loadThemeToComboBox(String themeId) {
         if (themeId == null) themeId = "light";
 
-        if (themeId.equals("dark")) {
-            themeComboBox.setValue("어두운 테마");
-        } else {
-            themeComboBox.setValue("밝은 테마");
+        String displayName = getDisplayNameFromThemeId(themeId);
+        themeComboBox.setValue(displayName);
+    }
+
+    /**
+     * 테마 ID를 표시명으로 변환
+     */
+    private String getDisplayNameFromThemeId(String themeId) {
+        switch (themeId) {
+            case "light": return "밝은 테마";
+            case "dark": return "어두운 테마";
+            case "blue": return "파란 테마";
+            case "green": return "초록 테마";
+            case "purple": return "보라 테마";
+            case "orange": return "주황 테마";
+            case "teal": return "청록 테마";
+            case "high-contrast": return "고대비 테마";
+            default: return "밝은 테마";
         }
     }
 
@@ -1426,8 +1463,13 @@ public class SettingsController implements Initializable {
             
             // 씬 설정
             Scene scene = new Scene(root);
-            scene.getStylesheets().add("/css/styles.css");
             dialogStage.setScene(scene);
+            
+            // 규칙 다이얼로그 Scene을 ThemeManager에 등록 (자동으로 현재 테마 적용됨)
+            com.smartfilemanager.ui.ThemeManager.registerScene(scene);
+            
+            // 규칙 다이얼로그가 닫힐 때 Scene 등록 해제
+            dialogStage.setOnHidden(event -> com.smartfilemanager.ui.ThemeManager.unregisterScene(scene));
             
             // 컨트롤러 초기화
             dialogController.setDialogStage(dialogStage);

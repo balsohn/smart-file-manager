@@ -76,10 +76,17 @@ public class PreviewDialog {
             root.setBottom(buttonBar);
             
             Scene scene = new Scene(root, 800, 600);
-            scene.getStylesheets().add("/css/styles.css");
+            // 스타일시트는 ThemeManager가 자동으로 적용하므로 제거
             
             previewStage.setScene(scene);
             previewStage.setResizable(true);
+            
+            // Preview 창 Scene을 ThemeManager에 등록 (자동으로 현재 테마 적용됨)
+            ThemeManager.registerScene(scene);
+            
+            // Preview 창이 닫힐 때 Scene 등록 해제
+            previewStage.setOnHidden(event -> ThemeManager.unregisterScene(scene));
+            
             previewStage.show();
             
         } catch (Exception e) {

@@ -28,12 +28,13 @@ public class HelpDialog {
 
         // 제목
         Label titleLabel = new Label("📖 Smart File Manager 도움말");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 20));
-        titleLabel.setStyle("-fx-text-fill: #2c3e50;");
+        titleLabel.setFont(Font.font("Segoe UI Emoji", FontWeight.BOLD, 22));
+        titleLabel.getStyleClass().add("help-title");
 
         // 탭 생성
         TabPane tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabPane.getStyleClass().add("help-tab-pane");
 
         // 1. 시작하기 탭
         Tab gettingStartedTab = createGettingStartedTab();
@@ -52,13 +53,20 @@ public class HelpDialog {
         // 닫기 버튼
         Button closeButton = new Button("닫기");
         closeButton.setPrefWidth(100);
-        closeButton.setStyle("-fx-background-color: #6c757d; -fx-text-fill: white; -fx-background-radius: 5px;");
+        closeButton.getStyleClass().add("help-close-button");
         closeButton.setOnAction(e -> helpStage.close());
 
         content.getChildren().addAll(titleLabel, tabPane, closeButton);
 
         Scene scene = new Scene(content, 700, 600);
         helpStage.setScene(scene);
+        
+        // 도움말 창 Scene을 ThemeManager에 등록 (자동으로 현재 테마 적용됨)
+        ThemeManager.registerScene(scene);
+        
+        // 도움말 창이 닫힐 때 Scene 등록 해제
+        helpStage.setOnHidden(event -> ThemeManager.unregisterScene(scene));
+        
         helpStage.show();
     }
 
@@ -104,7 +112,7 @@ public class HelpDialog {
         TextArea textArea = new TextArea(gettingStartedText);
         textArea.setEditable(false);
         textArea.setWrapText(true);
-        textArea.setStyle("-fx-font-family: '맑은 고딕', monospace; -fx-font-size: 12px;");
+        textArea.getStyleClass().add("help-text-area");
 
         content.getChildren().add(textArea);
         scrollPane.setContent(content);
@@ -165,7 +173,7 @@ public class HelpDialog {
         TextArea textArea = new TextArea(featuresText);
         textArea.setEditable(false);
         textArea.setWrapText(true);
-        textArea.setStyle("-fx-font-family: '맑은 고딕', monospace; -fx-font-size: 12px;");
+        textArea.getStyleClass().add("help-text-area");
 
         content.getChildren().add(textArea);
         scrollPane.setContent(content);
@@ -232,7 +240,7 @@ public class HelpDialog {
         TextArea textArea = new TextArea(troubleshootingText);
         textArea.setEditable(false);
         textArea.setWrapText(true);
-        textArea.setStyle("-fx-font-family: '맑은 고딕', monospace; -fx-font-size: 12px;");
+        textArea.getStyleClass().add("help-text-area");
 
         content.getChildren().add(textArea);
         scrollPane.setContent(content);
@@ -291,7 +299,7 @@ public class HelpDialog {
         TextArea textArea = new TextArea(shortcutsText);
         textArea.setEditable(false);
         textArea.setWrapText(true);
-        textArea.setStyle("-fx-font-family: '맑은 고딕', monospace; -fx-font-size: 12px;");
+        textArea.getStyleClass().add("help-text-area");
 
         content.getChildren().add(textArea);
         scrollPane.setContent(content);

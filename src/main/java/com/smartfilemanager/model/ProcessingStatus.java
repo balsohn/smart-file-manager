@@ -12,6 +12,7 @@ public enum ProcessingStatus {
 
     PENDING("Pending", "대기 중", "#6c757d"),           // 스캔 대기
     SCANNING("Scanning", "스캔 중", "#007bff"),         // 현재 스캔 중
+    SCANNED("Scanned", "스캔 완료", "#20c997"),         // 스캔 완료, 분석 대기
     ANALYZED("Analyzed", "분석 완료", "#17a2b8"),       // 분석 완료, 정리 대기
     ORGANIZING("Organizing", "정리 중", "#ffc107"),     // 현재 정리 중
     ORGANIZED("Organized", "정리 완료", "#28a745"),     // 정리 완료

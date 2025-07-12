@@ -20,10 +20,24 @@ import java.util.function.Consumer;
  */
 public class FileWatcherService {
 
+    // 변경 타입 열거형
+    public enum ChangeType {
+        CREATED, MODIFIED, DELETED
+    }
+
+    // 파일 변경 콜백 인터페이스
+    @FunctionalInterface
+    public interface FileChangeCallback {
+        void onFileChanged(Path filePath, ChangeType changeType);
+    }
+
     private WatchService watchService;
     private boolean isWatching = false;
     private ExecutorService watcherExecutor;
     private Path watchedDirectory;
+    
+    // 콜백 필드
+    private FileChangeCallback fileChangeCallback;
 
     // 서비스 의존성
     private final FileAnalysisService analysisService;
@@ -49,6 +63,13 @@ public class FileWatcherService {
         });
 
         loadConfig();
+    }
+    
+    /**
+     * 파일 변경 콜백 설정
+     */
+    public void setFileChangeCallback(FileChangeCallback fileChangeCallback) {
+        this.fileChangeCallback = fileChangeCallback;
     }
 
     /**

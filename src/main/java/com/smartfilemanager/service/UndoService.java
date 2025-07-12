@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -225,5 +226,80 @@ public class UndoService {
 
         System.err.println("[오류] 파일 되돌리기 실패: " + error.getMessage());
         error.printStackTrace();
+    }
+    
+    // 되돌리기 가능한 파일들을 저장하는 리스트
+    private List<FileInfo> undoableFiles = new ArrayList<>();
+    
+    /**
+     * 되돌리기 가능 여부 확인
+     */
+    public boolean canUndo() {
+        return !undoableFiles.isEmpty();
+    }
+    
+    /**
+     * 간단한 되돌리기 메서드 (FileOperationController에서 사용)
+     */
+    public void undo() throws Exception {
+        if (!canUndo()) {
+            throw new Exception("되돌릴 수 있는 파일이 없습니다.");
+        }
+        
+        System.out.println("[정보] 되돌리기 시작: " + undoableFiles.size() + "개 파일");
+        
+        List<FileInfo> filesToUndo = new ArrayList<>(undoableFiles);
+        int successCount = 0;
+        
+        for (FileInfo fileInfo : filesToUndo) {
+            try {
+                // 파일을 원래 위치로 이동
+                if (fileInfo.getOriginalLocation() != null) {
+                    Path currentPath = Paths.get(fileInfo.getFilePath());
+                    Path originalPath = Paths.get(fileInfo.getOriginalLocation(), fileInfo.getFileName());
+                    
+                    if (Files.exists(currentPath)) {
+                        // 원래 디렉토리 생성
+                        Files.createDirectories(originalPath.getParent());
+                        
+                        // 파일 이동
+                        Files.move(currentPath, originalPath, StandardCopyOption.REPLACE_EXISTING);
+                        
+                        // FileInfo 업데이트
+                        fileInfo.setFilePath(originalPath.toString());
+                        fileInfo.setStatus(ProcessingStatus.SCANNED);
+                        fileInfo.setProcessedAt(LocalDateTime.now());
+                        
+                        successCount++;
+                        System.out.println("[성공] 되돌리기 완료: " + fileInfo.getFileName());
+                    }
+                }
+            } catch (Exception e) {
+                fileInfo.setStatus(ProcessingStatus.FAILED);
+                fileInfo.setErrorMessage("되돌리기 실패: " + e.getMessage());
+                System.err.println("[오류] 되돌리기 실패: " + fileInfo.getFileName() + " - " + e.getMessage());
+            }
+        }
+        
+        // 성공적으로 되돌린 파일들은 목록에서 제거
+        undoableFiles.removeIf(file -> file.getStatus() == ProcessingStatus.SCANNED);
+        
+        System.out.println("[완료] " + successCount + "/" + filesToUndo.size() + " 파일 되돌리기 완료");
+    }
+    
+    /**
+     * 되돌리기 가능한 파일 추가
+     */
+    public void addUndoableFile(FileInfo fileInfo) {
+        if (fileInfo.getStatus() == ProcessingStatus.ORGANIZED && fileInfo.getOriginalLocation() != null) {
+            undoableFiles.add(fileInfo);
+        }
+    }
+    
+    /**
+     * 되돌리기 목록 초기화
+     */
+    public void clearUndoableFiles() {
+        undoableFiles.clear();
     }
 }
