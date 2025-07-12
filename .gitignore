@@ -92,3 +92,29 @@ Thumbs.db
 
 # ClaudPoint checkpoint system
 .checkpoints/
+
+# Custom tools and scripts
+git-user-config.bat
+*test*.bat
+*demo*.bat
+
+# Test files and directories
+test/
+SafetyTest/
+
+# Backup files
+*.backup
+*.bak
+
+# Configuration files (sensitive)
+config/local-config.json
+
+# Build artifacts that shouldn't be versioned
+build/classes/
+build/distributions/
+build/libs/
+build/tmp/
+
+# Runtime generated files
+logs/
+cache/
