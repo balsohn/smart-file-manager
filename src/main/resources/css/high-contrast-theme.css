@@ -1,0 +1,534 @@
+/* =========================
+   Smart File Manager
+   High Contrast Theme Styles
+   JavaFX Compatible Version
+   ========================= */
+
+/* 전체 애플리케이션 고대비 테마 */
+.root {
+    -fx-base: #ffffff;
+    -fx-background: #ffffff;
+    -fx-control-inner-background: #ffffff;
+    -fx-accent: #000000;
+    -fx-focus-color: #000000;
+    -fx-faint-focus-color: #00000022;
+    -fx-text-fill: #000000;
+    -fx-background-color: #ffffff;
+}
+
+/* 메뉴바 고대비 스타일 */
+.menu-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 0 0 2 0;
+}
+
+.menu-bar .label {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.menu-bar .menu:hover,
+.menu-bar .menu:focused,
+.menu-bar .menu:showing {
+    -fx-background-color: #000000;
+}
+
+.menu-bar .menu:hover .label,
+.menu-bar .menu:focused .label,
+.menu-bar .menu:showing .label {
+    -fx-text-fill: #ffffff;
+}
+
+.context-menu {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2;
+}
+
+.menu-item {
+    -fx-background-color: transparent;
+}
+
+.menu-item:focused,
+.menu-item:hover {
+    -fx-background-color: #000000;
+}
+
+.menu-item .label {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.menu-item:focused .label,
+.menu-item:hover .label {
+    -fx-text-fill: #ffffff;
+}
+
+/* 테이블 고대비 스타일 */
+.table-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2;
+    -fx-table-cell-border-color: #000000;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #000000;
+    -fx-border-color: #000000;
+    -fx-border-width: 0 0 2 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: #000000;
+    -fx-border-color: #ffffff;
+    -fx-border-width: 0 1 0 0;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+}
+
+.table-view .table-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #000000;
+    -fx-border-color: #000000;
+    -fx-border-width: 1;
+    -fx-font-weight: bold;
+}
+
+.table-view .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: #000000;
+    -fx-border-width: 1;
+}
+
+.table-view .table-row-cell:selected {
+    -fx-background-color: #000000;
+    -fx-text-fill: #ffffff;
+}
+
+.table-view .table-row-cell:hover {
+    -fx-background-color: #cccccc;
+}
+
+/* 버튼 고대비 스타일 */
+.button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #000000;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+    -fx-background-radius: 0px;
+    -fx-border-radius: 0px;
+    -fx-font-weight: bold;
+}
+
+.button:hover {
+    -fx-background-color: #000000;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #000000;
+}
+
+.button:pressed {
+    -fx-background-color: #666666;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #000000;
+}
+
+.button:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #666666;
+    -fx-border-color: #666666;
+}
+
+/* 주요 버튼들 */
+.scan-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #000000;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+    -fx-font-weight: bold;
+}
+
+.scan-button:hover {
+    -fx-background-color: #000000;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #000000;
+}
+
+.organize-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #000000;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+    -fx-font-weight: bold;
+}
+
+.organize-button:hover {
+    -fx-background-color: #000000;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #000000;
+}
+
+.settings-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #000000;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+    -fx-font-weight: bold;
+}
+
+.settings-button:hover {
+    -fx-background-color: #000000;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #000000;
+}
+
+/* 버튼 활성 상태 고대비 스타일 */
+.button.active {
+    -fx-background-color: #000000;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+    -fx-font-weight: bold;
+}
+
+.button.active:hover {
+    -fx-background-color: #666666;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #000000;
+}
+
+.monitoring-button.active {
+    -fx-background-color: #000000;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+    -fx-font-weight: bold;
+}
+
+.ai-button.active {
+    -fx-background-color: #000000;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+    -fx-font-weight: bold;
+}
+
+/* 라벨 고대비 스타일 */
+.label {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.title-label {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+    -fx-font-size: 32px;
+}
+
+.subtitle-label {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+    -fx-font-size: 18px;
+}
+
+.section-title {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+    -fx-font-size: 18px;
+}
+
+.stats-label,
+.statistics-label {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+/* 상태 라벨들 */
+.status-ready {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.status-scanning {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.status-organizing {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.status-complete {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.status-error {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.status-active {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.status-inactive {
+    -fx-text-fill: #666666;
+    -fx-font-weight: bold;
+}
+
+.status-success {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.status-processing {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.status-warning {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+/* 진행률 바 고대비 스타일 */
+.progress-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+    -fx-background-radius: 0px;
+    -fx-border-radius: 0px;
+    -fx-pref-height: 16px;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #000000;
+    -fx-background-radius: 0px;
+    -fx-background-insets: 0;
+}
+
+.progress-bar .track {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 0px;
+    -fx-background-insets: 0;
+}
+
+/* 진행률 바 라벨 스타일 */
+.progress-label {
+    -fx-text-fill: #000000;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.status-label {
+    -fx-text-fill: #000000;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+/* 입력 필드 고대비 스타일 */
+.text-field,
+.text-area {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #000000;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+    -fx-background-radius: 0px;
+    -fx-border-radius: 0px;
+    -fx-font-weight: bold;
+}
+
+.text-field:focused,
+.text-area:focused {
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+}
+
+.text-field-error {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+}
+
+.text-field-error:focused {
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+}
+
+/* 체크박스 고대비 스타일 */
+.check-box {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.check-box .box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+    -fx-background-radius: 0px;
+    -fx-border-radius: 0px;
+}
+
+.check-box:selected .mark {
+    -fx-background-color: #000000;
+}
+
+.check-box:selected .box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+}
+
+/* 콤보박스 고대비 스타일 */
+.combo-box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+    -fx-background-radius: 0px;
+    -fx-border-radius: 0px;
+}
+
+.combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #cccccc;
+}
+
+.combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: #000000;
+    -fx-text-fill: #ffffff;
+}
+
+.combo-box-error {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+}
+
+.combo-box-error:focused {
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+}
+
+/* 스피너 고대비 스타일 */
+.spinner {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+    -fx-background-radius: 0px;
+    -fx-border-radius: 0px;
+}
+
+.spinner .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-font-weight: bold;
+}
+
+/* 탭 패널 고대비 스타일 */
+.tab-pane {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+}
+
+.tab-pane .tab-header-area {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 0 0 2 0;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 0 2 0 0;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #000000;
+}
+
+.tab-pane .tab .tab-label {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #ffffff;
+}
+
+.tab-pane .tab-content-area {
+    -fx-background-color: #ffffff;
+}
+
+/* 스크롤바 고대비 스타일 */
+.scroll-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #000000;
+    -fx-background-radius: 0px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #666666;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #ffffff;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 1px;
+}
+
+/* 파일 상세 정보 패널 */
+.detail-panel {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+}
+
+.detail-title {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+    -fx-font-size: 16px;
+}
+
+.detail-content {
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+}
+
+/* 툴팁 고대비 스타일 */
+.tooltip {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #000000;
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+    -fx-background-radius: 0px;
+    -fx-border-radius: 0px;
+    -fx-font-weight: bold;
+}
