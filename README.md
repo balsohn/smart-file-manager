@@ -1,6 +1,6 @@
 # 🗂️ Smart File Manager / 스마트 파일 관리자
 
-> **Languages**: [English](#english) | [한국어](#korean)
+> **Languages**: [English](#english) | [한국어](#한국어)
 
 ---
 
